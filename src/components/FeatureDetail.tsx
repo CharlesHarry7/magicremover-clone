@@ -90,7 +90,7 @@ export default function FeatureDetail({
                 </li>
               ))}
             </ul>
-            <Button size="lg" render={<Link href={ctaHref} />}>
+            <Button size="lg" nativeButton={false} render={<Link href={ctaHref} />}>
               {ctaLabel} →
             </Button>
           </div>

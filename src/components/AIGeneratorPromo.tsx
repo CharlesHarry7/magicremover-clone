@@ -18,7 +18,11 @@ export default function AIGeneratorPromo() {
             stock licence to worry about. 3 credits an image, or attach
             reference photos to steer the style.
           </p>
-          <Button size="lg" render={<Link href="/ai-image-generator" />}>
+          <Button
+            size="lg"
+            nativeButton={false}
+            render={<Link href="/ai-image-generator" />}
+          >
             Try the AI image generator →
           </Button>
         </CardContent>

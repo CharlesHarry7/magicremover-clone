@@ -45,6 +45,7 @@ export default function Navbar() {
               key={link.label}
               variant="ghost"
               size="sm"
+              nativeButton={false}
               render={<Link href={link.href} />}
               className="text-muted-foreground"
             >
@@ -57,7 +58,7 @@ export default function Navbar() {
           <Button variant="outline" size="sm">
             English
           </Button>
-          <Button size="sm" render={<Link href="#try" />}>
+          <Button size="sm" nativeButton={false} render={<Link href="#try" />}>
             Try free
           </Button>
         </div>
@@ -95,6 +96,7 @@ export default function Navbar() {
                   key={link.label}
                   variant="ghost"
                   className="justify-start text-muted-foreground"
+                  nativeButton={false}
                   render={<Link href={link.href} />}
                   onClick={() => setMobileOpen(false)}
                 >
@@ -106,6 +108,7 @@ export default function Navbar() {
             <div className="flex flex-col gap-2 px-4 pb-4">
               <Button variant="outline">English</Button>
               <Button
+                nativeButton={false}
                 render={<Link href="#try" />}
                 onClick={() => setMobileOpen(false)}
               >

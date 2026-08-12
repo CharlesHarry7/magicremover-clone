@@ -44,6 +44,7 @@ export default function CoverHookPromo() {
               <Button
                 variant="link"
                 className="h-auto px-0"
+                nativeButton={false}
                 render={<Link href={link.href} target="_blank" />}
               >
                 {link.label}
