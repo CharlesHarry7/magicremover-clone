@@ -943,7 +943,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       : brushSize;
 
   const errorBanner = error ? (
-    <Alert variant="destructive" className="mt-3" role="alert">
+    <Alert variant="destructive" className="mt-3">
       <AlertCircleIcon />
       <AlertDescription>{error}</AlertDescription>
     </Alert>
