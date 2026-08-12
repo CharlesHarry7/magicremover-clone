@@ -20,7 +20,7 @@ import {
   SERVICE_UNAVAILABLE_EN,
   SERVICE_UNAVAILABLE_ZH,
 } from "@/lib/remove-errors";
-import { FREE_EDITS_STORY } from "@/lib/remove-limits";
+import { FREE_EDITS, FREE_EDITS_STORY, remainingEditsLabel } from "@/lib/remove-limits";
 
 const beforeAfterImages: Record<
   DemoTab,
@@ -124,7 +124,7 @@ export default function Hero() {
     <section
       id="try"
       aria-labelledby={headingId}
-      className="scroll-mt-24 bg-gradient-to-b from-primary-light/60 to-background px-4 py-12 sm:py-20"
+      className="scroll-mt-24 bg-gradient-to-b from-primary-light/60 to-background px-4 py-10 sm:py-16"
     >
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
@@ -161,33 +161,35 @@ export default function Hero() {
           {FREE_EDITS_STORY}.
         </p>
 
-        <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
-          <ToggleGroup
-            variant="outline"
-            spacing={1}
-            aria-label="Demo removal category"
-            className="flex flex-wrap justify-center rounded-full bg-muted/80 p-1"
-            value={mode === "demo" ? [activeTab] : []}
-            onValueChange={(group) => {
-              const next = group[0] as DemoTab | undefined;
-              if (!next || !DEMO_TABS.includes(next)) return;
-              selectTab(next);
-            }}
-          >
-            {DEMO_TABS.map((tab) => (
-              <ToggleGroupItem
-                key={tab}
-                value={tab}
-                aria-label={`Show ${tab} before and after demo`}
-                className="rounded-full px-4 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90"
-              >
-                {tab}
-              </ToggleGroupItem>
-            ))}
-          </ToggleGroup>
+        <div className="mb-8 flex w-full max-w-full items-center gap-2 sm:justify-center">
+          <div className="min-w-0 flex-1 overflow-x-auto sm:flex-none sm:overflow-visible">
+            <ToggleGroup
+              variant="outline"
+              spacing={1}
+              aria-label="Demo removal category"
+              className="flex w-max flex-nowrap justify-start gap-1 rounded-full bg-muted/80 p-1 sm:w-fit sm:flex-wrap sm:justify-center"
+              value={mode === "demo" ? [activeTab] : []}
+              onValueChange={(group) => {
+                const next = group[0] as DemoTab | undefined;
+                if (!next || !DEMO_TABS.includes(next)) return;
+                selectTab(next);
+              }}
+            >
+              {DEMO_TABS.map((tab) => (
+                <ToggleGroupItem
+                  key={tab}
+                  value={tab}
+                  aria-label={`Show ${tab} before and after demo`}
+                  className="shrink-0 rounded-full px-4 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90"
+                >
+                  {tab}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
+          </div>
           <Button
             variant={mode === "editor" ? "default" : "outline"}
-            className="rounded-full"
+            className="shrink-0 rounded-full"
             aria-pressed={mode === "editor"}
             onClick={() => openEditor()}
           >
@@ -304,12 +306,13 @@ export default function Hero() {
                     <Badge
                       variant="secondary"
                       className="bg-success/10 text-success hover:bg-success/10"
+                      title={FREE_EDITS_STORY}
                     >
-                      {FREE_EDITS_STORY}
+                      {remainingEditsLabel(FREE_EDITS)}
                     </Badge>
                     <Button
-                      variant="link"
-                      className="h-auto px-0"
+                      variant="ghost"
+                      size="sm"
                       onClick={() => openEditor()}
                     >
                       Open editor →

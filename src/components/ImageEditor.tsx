@@ -29,6 +29,7 @@ import {
   CLIENT_ABORT_MS,
   FREE_EDITS,
   FREE_EDITS_STORY,
+  remainingEditsLabel,
   MAX_IMAGE_DIM,
   MAX_UPLOAD_BYTES,
   OVERALL_BUDGET_MS,
@@ -1092,7 +1093,7 @@ export default function ImageEditor({
           className="bg-success/10 text-success hover:bg-success/10"
           title={FREE_EDITS_STORY}
         >
-          Demo edits {sessionLeft} / {FREE_EDITS}
+          {remainingEditsLabel(sessionLeft)}
         </Badge>
       </div>
 
