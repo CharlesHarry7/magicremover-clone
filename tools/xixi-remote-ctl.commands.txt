@@ -1,0 +1,22 @@
+# xixi Mac remote hub — deploy copy
+# Copy tools/xixi-remote-ctl.sh -> /Users/x/WorkBuddy/codex-handoffs/agent-remote/ctl.sh
+#   chmod +x /Users/x/WorkBuddy/codex-handoffs/agent-remote/ctl.sh
+
+OC_DIR=/Users/x/Documents/Default Project/columbus-clone
+OC_SES=ses_00878c8edffehqkwY04mvOdCoA
+
+# NOTES
+# - Use NEW session ses_00878c8edffehqkwY04mvOdCoA for opencode.
+# - Do NOT use ses_00907bce8ffejLYLHJZ5R5TheJ — that session is bloated under Default Project.
+# - Do NOT pass --auto to opencode (not a real flag).
+# - opencode uses: --format json --dir "$OC_DIR" --title magicremover-shadcn
+# - PATH must include /Users/x/.opencode/bin and WorkBuddy cli bin.
+# - status wraps `codebuddy ps` with python subprocess timeout=8s so it never hangs.
+# - Log: /Users/x/WorkBuddy/codex-handoffs/opencode-remote.log
+
+# Commands
+./ctl.sh status
+./ctl.sh opencode [msg]          # pkill old run for OC_SES, then resume that session
+./ctl.sh opencode-fresh [msg]    # kill all opencode run, clear log, start without -s (new session)
+./ctl.sh workbuddy [msg]
+./ctl.sh codex [msg]
