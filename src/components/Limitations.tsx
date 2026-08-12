@@ -1,3 +1,5 @@
+import { Card, CardContent } from "@/components/ui/card";
+
 const limitations = [
   {
     title: "Very large erase areas",
@@ -15,27 +17,29 @@ const limitations = [
 
 export default function Limitations() {
   return (
-    <section className="bg-card px-4 py-16">
+    <section className="bg-muted px-4 py-16">
       <div className="mx-auto max-w-4xl">
         <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
           Honest limitations
         </h2>
-        <h3 className="mb-10 text-center text-lg text-muted">
+        <h3 className="mb-10 text-center text-lg text-muted-foreground">
           When MagicRemover isn&apos;t the right tool
         </h3>
-        <p className="mx-auto mb-10 max-w-2xl text-center text-sm leading-relaxed text-muted">
+        <p className="mx-auto mb-10 max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
           The AI does great on small, well-defined edits. Here&apos;s where it currently falls short — so you don&apos;t spend a credit on a shot it can&apos;t fix.
         </p>
 
         <div className="grid gap-6 sm:grid-cols-3">
           {limitations.map((item, index) => (
-            <div key={item.title} className="rounded-2xl border border-border bg-white p-6">
-              <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-warning/10 text-sm font-bold text-warning">
-                {index + 1}
-              </div>
-              <h4 className="mb-2 font-semibold">{item.title}</h4>
-              <p className="text-sm leading-relaxed text-muted">{item.description}</p>
-            </div>
+            <Card key={item.title}>
+              <CardContent className="p-6">
+                <div className="mb-3 flex h-8 w-8 items-center justify-center rounded-full bg-warning/10 text-sm font-bold text-warning">
+                  {index + 1}
+                </div>
+                <h4 className="mb-2 font-semibold">{item.title}</h4>
+                <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>

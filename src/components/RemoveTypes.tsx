@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { Card, CardContent } from "@/components/ui/card";
 
 const removeTypes = [
   {
@@ -70,10 +71,10 @@ export default function RemoveTypes() {
         <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
           What you can remove
         </h2>
-        <h3 className="mb-10 text-center text-lg text-muted">
+        <h3 className="mb-10 text-center text-lg text-muted-foreground">
           One AI eraser. Every kind of unwanted pixel.
         </h3>
-        <p className="mx-auto mb-10 max-w-2xl text-center text-sm leading-relaxed text-muted">
+        <p className="mx-auto mb-10 max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
           From tourists in your travel snaps to watermarks on stock photos, MagicRemover handles it in one brush stroke.
         </p>
 
@@ -82,13 +83,17 @@ export default function RemoveTypes() {
             <Link
               key={item.title}
               href={item.href}
-              className="group rounded-2xl border border-border bg-white p-6 transition-all hover:border-primary/30 hover:shadow-md"
+              className="group"
             >
-              <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light text-primary group-hover:bg-primary group-hover:text-white transition-colors">
-                {item.icon}
-              </div>
-              <h4 className="mb-2 font-semibold">{item.title}</h4>
-              <p className="text-sm leading-relaxed text-muted">{item.description}</p>
+              <Card className="h-full transition-all hover:border-primary/30 hover:shadow-md">
+                <CardContent className="p-6">
+                  <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                    {item.icon}
+                  </div>
+                  <h4 className="mb-2 font-semibold">{item.title}</h4>
+                  <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+                </CardContent>
+              </Card>
             </Link>
           ))}
         </div>

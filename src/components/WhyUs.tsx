@@ -1,3 +1,5 @@
+import { Card, CardContent } from "@/components/ui/card";
+
 const benefits = [
   {
     title: "100% free",
@@ -24,16 +26,18 @@ export default function WhyUs() {
         <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
           Why MagicRemover
         </h2>
-        <h3 className="mb-10 text-center text-lg text-muted">
+        <h3 className="mb-10 text-center text-lg text-muted-foreground">
           Free, fast, and refreshingly simple.
         </h3>
 
         <div className="grid gap-6 sm:grid-cols-2">
           {benefits.map((item) => (
-            <div key={item.title} className="rounded-2xl border border-border p-6">
-              <h4 className="mb-2 font-semibold">{item.title}</h4>
-              <p className="text-sm leading-relaxed text-muted">{item.description}</p>
-            </div>
+            <Card key={item.title}>
+              <CardContent className="p-6">
+                <h4 className="mb-2 font-semibold">{item.title}</h4>
+                <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
+              </CardContent>
+            </Card>
           ))}
         </div>
       </div>

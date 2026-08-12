@@ -1,6 +1,11 @@
 "use client";
 
-import { useState } from "react";
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion";
 
 const faqs = [
   {
@@ -42,43 +47,28 @@ const faqs = [
 ];
 
 export default function FAQ() {
-  const [openIndex, setOpenIndex] = useState<number | null>(null);
-
   return (
     <section className="px-4 py-16">
       <div className="mx-auto max-w-3xl">
         <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
           FAQ
         </h2>
-        <h3 className="mb-10 text-center text-lg text-muted">
+        <h3 className="mb-10 text-center text-lg text-muted-foreground">
           The stuff people ask.
         </h3>
 
-        <div className="space-y-2">
+        <Accordion className="space-y-2">
           {faqs.map((faq, index) => (
-            <div key={index} className="rounded-xl border border-border">
-              <button
-                className="flex w-full items-center justify-between px-5 py-4 text-left"
-                onClick={() => setOpenIndex(openIndex === index ? null : index)}
-              >
-                <span className="pr-4 font-medium text-sm">{faq.question}</span>
-                <svg
-                  className={`h-5 w-5 flex-shrink-0 text-muted transition-transform ${openIndex === index ? "rotate-45" : ""}`}
-                  fill="none"
-                  stroke="currentColor"
-                  viewBox="0 0 24 24"
-                >
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
-                </svg>
-              </button>
-              {openIndex === index && (
-                <div className="border-t border-border px-5 pb-4 pt-3">
-                  <p className="text-sm leading-relaxed text-muted">{faq.answer}</p>
-                </div>
-              )}
-            </div>
+            <AccordionItem key={index} value={`item-${index}`} className="rounded-xl border border-border px-5">
+              <AccordionTrigger className="py-4 hover:no-underline">
+                {faq.question}
+              </AccordionTrigger>
+              <AccordionContent>
+                <p className="text-sm leading-relaxed text-muted-foreground">{faq.answer}</p>
+              </AccordionContent>
+            </AccordionItem>
           ))}
-        </div>
+        </Accordion>
       </div>
     </section>
   );

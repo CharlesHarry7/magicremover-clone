@@ -28,7 +28,7 @@ const company = [
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border bg-card">
+    <footer className="border-t border-border bg-muted">
       <div className="mx-auto max-w-6xl px-4 py-12">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
@@ -36,7 +36,7 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {allTools.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -49,7 +49,7 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {guides.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -62,7 +62,7 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {company.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-foreground transition-colors">
+                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
                     {link.label}
                   </Link>
                 </li>
@@ -75,14 +75,14 @@ export default function Footer() {
               <Image src="/logo.webp" alt="MagicRemover" width={28} height={28} className="h-7 w-7" />
               <span className="font-bold">MagicRemover</span>
             </Link>
-            <p className="text-xs text-muted mb-3">
+            <p className="text-xs text-muted-foreground mb-3">
               Powered by{" "}
               <Link href="https://apimodels.app" className="text-primary hover:underline" target="_blank">
                 apimodels.app
               </Link>{" "}
               — a unified AI image generation API
             </p>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Also from us: CoverHook —{" "}
               <Link href="https://coverhook.com" className="text-primary hover:underline" target="_blank">
                 AI social media cover generator
@@ -91,7 +91,7 @@ export default function Footer() {
           </div>
         </div>
 
-        <div className="mt-10 border-t border-border pt-6 text-center text-xs text-muted">
+        <div className="mt-10 border-t border-border pt-6 text-center text-xs text-muted-foreground">
           2 free removes a day, plus 2 more when you sign in · Results retained 24 hours · We don&apos;t store your originals.
         </div>
       </div>

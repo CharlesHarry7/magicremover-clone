@@ -1,5 +1,7 @@
 import Link from "next/link";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 
 interface FeatureDetailProps {
   tag: string;
@@ -57,14 +59,14 @@ export default function FeatureDetail({
         <div className={`flex flex-col gap-8 lg:flex-row lg:items-center ${reverse ? "lg:flex-row-reverse" : ""}`}>
           {imageSection}
           <div className="flex-1">
-            <span className="mb-3 inline-block rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+            <Badge variant="secondary" className="mb-3 bg-primary-light text-primary border-primary/20">
               {tag}
-            </span>
+            </Badge>
             <h3 className="mb-3 text-2xl font-bold">{title}</h3>
-            <p className="mb-4 text-sm leading-relaxed text-muted">{description}</p>
+            <p className="mb-4 text-sm leading-relaxed text-muted-foreground">{description}</p>
             <ul className="mb-5 space-y-2">
               {bullets.map((bullet) => (
-                <li key={bullet} className="flex items-start gap-2 text-sm text-muted">
+                <li key={bullet} className="flex items-start gap-2 text-sm text-muted-foreground">
                   <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                   </svg>
@@ -72,11 +74,10 @@ export default function FeatureDetail({
                 </li>
               ))}
             </ul>
-            <Link
-              href={ctaHref}
-              className="inline-flex items-center gap-1 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-            >
-              {ctaLabel} →
+            <Link href={ctaHref}>
+              <Button>
+                {ctaLabel} →
+              </Button>
             </Link>
           </div>
         </div>

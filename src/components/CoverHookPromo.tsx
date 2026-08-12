@@ -9,9 +9,9 @@ const coverLinks = [
 
 export default function CoverHookPromo() {
   return (
-    <section className="bg-card px-4 py-10">
+    <section className="bg-muted px-4 py-10">
       <div className="mx-auto max-w-4xl">
-        <p className="mb-4 text-sm text-muted">
+        <p className="mb-4 text-sm text-muted-foreground">
           Need the finished cover rather than raw artwork? A general image model sets type badly, so our sister site{" "}
           <Link href="https://coverhook.com" className="text-primary hover:underline" target="_blank">
             CoverHook

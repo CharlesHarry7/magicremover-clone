@@ -2,6 +2,10 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Badge } from "@/components/ui/badge";
 
 interface ImageEditorProps {
   onResult?: (resultUrl: string) => void;
@@ -101,7 +105,6 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
   useEffect(() => {
     if (!initialFile) return;
     let cancelled = false;
-    // Defer so we don't setState synchronously inside the effect body.
     queueMicrotask(() => {
       if (!cancelled) handleFileUpload(initialFile);
     });
@@ -313,7 +316,6 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       document.body.removeChild(a);
       URL.revokeObjectURL(objectUrl);
     } catch {
-      // Cross-origin fallback: open in a new tab
       window.open(resultUrl, "_blank", "noopener,noreferrer");
     }
   }, [resultUrl]);
@@ -326,19 +328,13 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     setError(null);
   }, [clearMask]);
 
-  const errorBanner = error ? (
-    <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-600">
-      {error}
-    </p>
-  ) : null;
-
   return (
     <div id="editor" className="mx-auto max-w-4xl scroll-mt-24">
-      <div className="mb-3 flex items-center justify-between text-xs text-muted">
+      <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
         <span>Brush the area to erase, then remove</span>
-        <span className="rounded-full bg-success/10 px-2 py-0.5 font-medium text-success">
+        <Badge variant="secondary" className="bg-success/10 text-success border-success/20">
           Free today {dailyLeft} / {FREE_EDITS}
-        </span>
+        </Badge>
       </div>
 
       {!image ? (
@@ -348,11 +344,11 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
         >
-          <svg className="mx-auto mb-3 h-12 w-12 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+          <svg className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
           </svg>
           <p className="mb-1 text-sm font-medium">Drop a photo here</p>
-          <p className="text-xs text-muted">or click to browse · JPG / PNG · up to ~10 MB</p>
+          <p className="text-xs text-muted-foreground">or click to browse · JPG / PNG · up to ~10 MB</p>
           <input
             ref={fileInputRef}
             type="file"
@@ -363,7 +359,6 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
               if (file) handleFileUpload(file);
             }}
           />
-          {errorBanner}
         </div>
       ) : resultUrl ? (
         <div>
@@ -402,19 +397,14 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             </div>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
-            <button
-              onClick={handleDownload}
-              className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-            >
+            <Button onClick={handleDownload}>
               Download Result
-            </button>
-            <button
-              onClick={handleNewImage}
-              className="rounded-lg border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-card"
-            >
+            </Button>
+            <Button variant="outline" onClick={handleNewImage}>
               Edit Again
-            </button>
-            <button
+            </Button>
+            <Button
+              variant="outline"
               onClick={() => {
                 setImage(null);
                 setResultUrl(null);
@@ -423,12 +413,10 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                 setError(null);
                 clearMask();
               }}
-              className="rounded-lg border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-card"
             >
               New Image
-            </button>
+            </Button>
           </div>
-          {errorBanner}
         </div>
       ) : (
         <div>
@@ -456,49 +444,51 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
-              <span className="text-xs text-muted">Brush size</span>
-              <input
-                type="range"
-                min="5"
-                max="80"
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="h-1.5 w-24 accent-primary"
+              <span className="text-xs text-muted-foreground">Brush size</span>
+              <Slider
+                value={[brushSize]}
+                min={5}
+                max={80}
+                onValueChange={(v) => setBrushSize(Array.isArray(v) ? v[0] : v)}
+                className="w-24"
               />
               <span className="text-xs font-medium">{brushSize}px</span>
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleUndo}
                 disabled={drawingHistory.length === 0}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card disabled:opacity-40"
               >
                 Undo
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={clearMask}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card"
               >
                 Clear
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   setImage(null);
                   setBeforeUrl("");
                   setError(null);
                   clearMask();
                 }}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card"
               >
                 New Image
-              </button>
+              </Button>
             </div>
           </div>
 
-          <button
+          <Button
             onClick={handleRemoveObject}
             disabled={loading || dailyLeft <= 0}
-            className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
+            className="w-full"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -511,11 +501,18 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             ) : (
               "Remove Objects"
             )}
-          </button>
-
-          {errorBanner}
+          </Button>
         </div>
       )}
+
+      <Dialog open={!!error} onOpenChange={() => setError(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Error</DialogTitle>
+            <DialogDescription>{error}</DialogDescription>
+          </DialogHeader>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

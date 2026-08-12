@@ -18,23 +18,23 @@ const steps = [
 
 export default function HowItWorks() {
   return (
-    <section className="bg-card px-4 py-16">
+    <section className="bg-muted px-4 py-16">
       <div className="mx-auto max-w-4xl">
         <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
           How it works
         </h2>
-        <h3 className="mb-10 text-center text-lg text-muted">
+        <h3 className="mb-10 text-center text-lg text-muted-foreground">
           Three steps. About thirty seconds.
         </h3>
 
         <div className="grid gap-6 sm:grid-cols-3">
           {steps.map((item) => (
             <div key={item.step} className="text-center">
-              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-xl font-bold text-white">
+              <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary text-xl font-bold text-primary-foreground">
                 {item.step}
               </div>
               <h4 className="mb-2 font-semibold">{item.title}</h4>
-              <p className="text-sm leading-relaxed text-muted">{item.description}</p>
+              <p className="text-sm leading-relaxed text-muted-foreground">{item.description}</p>
             </div>
           ))}
         </div>
