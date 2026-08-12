@@ -10,15 +10,15 @@ export default function AIGeneratorPromo() {
       <Card className="mx-auto max-w-4xl border-2 border-primary/20 bg-gradient-to-br from-primary-light to-background py-0 shadow-none ring-0">
         <CardContent className="p-8 sm:p-12">
           <Badge variant="secondary" className="mb-4">
-            Stub page
+            Stub route
           </Badge>
           <h3 className="mb-3 text-xl font-bold sm:text-2xl">
-            Need a picture you don&apos;t have? Generate one.
+            Need a picture you don&apos;t have?
           </h3>
           <p className="mb-6 max-w-xl text-sm leading-relaxed text-muted-foreground">
-            The AI image generator marketing page is a stub in this clone — it
-            is not wired to a model yet. Erase unwanted objects from a photo you
-            already have with the free remover above.
+            The AI image generator page exists so nav links do not 404, but it
+            is not wired to a model. Clean a photo you already have with the
+            object remover instead.
           </p>
           <div className="flex flex-wrap gap-3">
             <Button size="lg" nativeButton={false} render={<Link href="/#try" />}>
@@ -30,7 +30,7 @@ export default function AIGeneratorPromo() {
               nativeButton={false}
               render={<Link href="/ai-image-generator" />}
             >
-              View generator stub
+              Read generator stub
             </Button>
           </div>
         </CardContent>

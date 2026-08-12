@@ -96,8 +96,8 @@ export default function Hero() {
 
         <p className="mx-auto mb-10 max-w-2xl text-center text-base leading-relaxed text-muted-foreground">
           Erase anything from your photos in seconds. Brush any object, person,
-          text, or watermark out of a photo — no signup, no watermark. 2 free
-          edits a day.
+          text, or watermark out of a photo — no signup, no watermark. Two demo
+          edits per browser session.
         </p>
 
         <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
@@ -212,7 +212,7 @@ export default function Hero() {
                       variant="secondary"
                       className="bg-success/10 text-success hover:bg-success/10"
                     >
-                      Free today 2 / 2
+                      Demo edits 2 / 2
                     </Badge>
                     <Button
                       variant="link"

@@ -17,6 +17,35 @@ interface ImageEditorProps {
 
 const FREE_EDITS = 2;
 
+function formatRemoveApiError(
+  status: number,
+  data: { error?: string; code?: string }
+): string {
+  const code = data.code;
+  if (code === "MISSING_API_KEY") {
+    return (
+      data.error ||
+      "Object removal is not configured on the server (HTTP 503)."
+    );
+  }
+  if (code === "PREDICTION_TIMEOUT" || status === 504) {
+    return (
+      data.error ||
+      "Removal timed out on the Worker (~30s budget). Try a smaller image."
+    );
+  }
+  if (code === "PAYLOAD_TOO_LARGE" || status === 413) {
+    return (
+      data.error ||
+      "That photo is too large for the Worker. Use a file under ~10 MB."
+    );
+  }
+  if (code === "REPLICATE_RATE_LIMIT" || status === 429) {
+    return data.error || "Removal provider is rate-limiting requests. Try again shortly.";
+  }
+  return data.error || `Failed to process image (HTTP ${status})`;
+}
+
 export default function ImageEditor({ onResult, initialFile }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement>(null);
@@ -260,7 +289,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     if (!canvas || !image) return;
 
     if (dailyLeft <= 0) {
-      setError("No free edits left today.");
+      setError("No demo edits left in this session. Refresh the page to reset the counter.");
       return;
     }
 
@@ -283,10 +312,14 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
         body: JSON.stringify({ image: imageDataUrl, mask: binaryMask }),
       });
 
-      const data = await res.json();
+      const data = (await res.json()) as {
+        error?: string;
+        code?: string;
+        result?: unknown;
+      };
 
       if (!res.ok) {
-        throw new Error(data.error || "Failed to process image");
+        throw new Error(formatRemoveApiError(res.status, data));
       }
 
       if (typeof data.result !== "string") {
@@ -339,13 +372,13 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
   return (
     <div id="editor" className="mx-auto max-w-4xl scroll-mt-24">
-      <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
+      <div className="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span>Brush the area to erase, then remove</span>
         <Badge
           variant="secondary"
           className="bg-success/10 text-success hover:bg-success/10"
         >
-          Free today {dailyLeft} / {FREE_EDITS}
+          Demo edits {dailyLeft} / {FREE_EDITS}
         </Badge>
       </div>
 
@@ -523,6 +556,13 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
               "Remove Objects"
             )}
           </Button>
+
+          {loading ? (
+            <p className="mt-2 text-center text-xs text-muted-foreground">
+              Usually finishes in about 15–30s. The Worker stops around 28s and
+              returns a clear timeout error instead of hanging forever.
+            </p>
+          ) : null}
 
           {errorBanner}
         </div>

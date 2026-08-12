@@ -163,7 +163,7 @@ async function callReplicate(
   }
 
   const err = new Error(
-    "Prediction timed out on the Worker. Try a smaller image or try again."
+    "Prediction timed out (~28s Worker budget). Try a smaller image or try again."
   );
   (err as Error & { status?: number; code?: string }).status = 504;
   (err as Error & { status?: number; code?: string }).code = "PREDICTION_TIMEOUT";

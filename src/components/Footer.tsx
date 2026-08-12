@@ -123,8 +123,8 @@ export default function Footer() {
 
         <Separator className="mt-10" />
         <div className="pt-6 text-center text-xs text-muted-foreground">
-          Free object remover demo · Results are not stored by this app · Stub
-          marketing pages link back to the editor.
+          Two demo edits per session · Results are not stored · Stub marketing
+          pages link back to the editor.
         </div>
       </div>
     </footer>

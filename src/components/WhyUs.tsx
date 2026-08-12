@@ -2,24 +2,24 @@ import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/c
 
 const benefits = [
   {
-    title: "100% free",
+    title: "Free demo",
     description:
-      "5 edits every day, forever. No credit card, no trial, no paywall.",
+      "Two demo edits per browser session. No credit card, no trial wall, no Stripe.",
   },
   {
     title: "No signup",
     description:
-      "Open the page and start editing. Your browser tracks your daily count.",
+      "Open the page and start brushing. There is no account system in this clone.",
   },
   {
-    title: "High quality",
+    title: "Honest failures",
     description:
-      "Backed by a state-of-the-art inpainting model that reconstructs background detail.",
+      "Missing config returns HTTP 503. Timeouts and oversized payloads return clear codes — never a fake success.",
   },
   {
     title: "Privacy-first",
     description:
-      "We don't store your uploads or results. Images leave memory after each request.",
+      "Uploads are processed for the request. This app does not keep a results archive.",
   },
 ];
 
@@ -31,7 +31,7 @@ export default function WhyUs() {
           Why MagicRemover
         </h2>
         <h3 className="mb-10 text-center text-lg text-muted-foreground">
-          Free, fast, and refreshingly simple.
+          Free, fast, and refreshingly honest.
         </h3>
 
         <div className="grid gap-6 sm:grid-cols-2">
