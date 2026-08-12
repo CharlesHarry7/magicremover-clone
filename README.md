@@ -99,10 +99,17 @@ That is a **broken/partial Workers publish** (or a Pages git/`next build` surfac
 
 ### How to open a working preview for QA
 
+**Prefer workers.dev — not pages.dev.** Current green Workers hostname (assets hydrate):
+
+`https://magicremover-clone.guochao950518.workers.dev`
+
+(`npm run smoke:deployed -- https://magicremover-clone.guochao950518.workers.dev` → home/CSS/cases **200**. Do not use `magicremover-clone.pages.dev` until Pages is unbound + OpenNext redeployed.)
+
 | Goal | Command | Notes |
 | --- | --- | --- |
-| Local Workers QA (always works offline) | `npm run preview` | OpenNext build + `check:assets` + Wrangler; default `http://127.0.0.1:8787` |
-| Optional public tunnel | after preview: `cloudflared tunnel --url http://127.0.0.1:8787` | Use when `wrangler` has no Cloudflare auth |
+| Shareable Workers QA | open workers.dev URL above | OpenNext Worker + ASSETS; ignore `*.pages.dev` |
+| Local Workers QA | `npm run preview` | OpenNext build + `check:assets` + Wrangler; default `http://127.0.0.1:8787` |
+| Optional public tunnel | after preview: `cloudflared tunnel --url http://127.0.0.1:8787` | When you need the **PR tip** locally without CF auth |
 | Non-prod Workers version | `npm run upload` or `npm run deploy:preview` | Needs `CLOUDFLARE_API_TOKEN` / `wrangler login`; **does not promote** production |
 | Smoke CSS/cases/home | `npm run smoke:deployed -- <preview-url>` | Fails if home/CSS/cases are not **200** |
 
