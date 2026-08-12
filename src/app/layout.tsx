@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import Footer from "@/components/Footer";
 import Navbar from "@/components/Navbar";
 import { Toaster } from "@/components/ui/sonner";
-import { getSiteUrl } from "@/lib/site-url";
+import { PRODUCTION_SITE_URL, getSiteUrl } from "@/lib/site-url";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -18,7 +18,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
-const siteUrl = getSiteUrl();
+const siteUrl = getSiteUrl() || PRODUCTION_SITE_URL;
 
 const title = "Free AI Object Remover — No Signup, No Watermark | MagicRemover";
 const description =

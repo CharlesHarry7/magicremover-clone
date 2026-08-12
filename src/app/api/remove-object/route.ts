@@ -8,7 +8,7 @@ import {
   POLL_INTERVAL_MS,
   RESULT_FETCH_TIMEOUT_MS,
 } from "@/lib/remove-limits";
-import { SERVICE_UNAVAILABLE_API_ERROR } from "@/lib/remove-errors";
+import { SERVICE_UNAVAILABLE_API_ERROR, mentionsSecret } from "@/lib/remove-errors";
 
 /**
  * Object removal via Replicate (LaMa-based image-object-removal).
@@ -48,13 +48,33 @@ function missingKeyResponse() {
   );
 }
 
+function clientSafeCode(code: string): string {
+  return code.startsWith("REPLICATE_")
+    ? `PROVIDER_${code.slice("REPLICATE_".length)}`
+    : code;
+}
+
 function errorResponse(
   status: number,
   code: string,
   error: string,
   extras?: Record<string, unknown>
 ) {
-  return NextResponse.json({ error, code, ...extras }, { status });
+  if (code === "MISSING_API_KEY" || status === 503) {
+    return NextResponse.json(
+      { error: SERVICE_UNAVAILABLE_API_ERROR, code: "MISSING_API_KEY", ...extras },
+      { status: 503 }
+    );
+  }
+  const safeCode = clientSafeCode(code);
+  const safeError =
+    mentionsSecret(error) || mentionsSecret(code)
+      ? "Removal failed. Please try again."
+      : error;
+  return NextResponse.json(
+    { error: safeError, code: safeCode, ...extras },
+    { status }
+  );
 }
 
 function remainingMs(deadline: number) {
@@ -112,24 +132,29 @@ async function callReplicate(
 
   if (!createRes.ok) {
     const text = await createRes.text();
+    console.error(
+      "Removal provider create failed:",
+      createRes.status,
+      text.slice(0, 300)
+    );
     if (createRes.status === 401 || createRes.status === 403) {
       throw new ApiError(
         502,
-        "REPLICATE_AUTH",
+        "PROVIDER_AUTH",
         "The removal service rejected the request. Please try again later."
       );
     }
     if (createRes.status === 429) {
       throw new ApiError(
         429,
-        "REPLICATE_RATE_LIMIT",
-        "Replicate rate limit hit. Wait a moment and try again."
+        "PROVIDER_RATE_LIMIT",
+        "Removal provider is rate-limiting requests. Try again shortly."
       );
     }
     throw new ApiError(
       502,
-      "REPLICATE_ERROR",
-      `Replicate API error: ${createRes.status} ${text.slice(0, 300)}`
+      "PROVIDER_ERROR",
+      "Removal failed. Please try again."
     );
   }
 
@@ -151,8 +176,8 @@ async function callReplicate(
   if (!getUrl) {
     throw new ApiError(
       502,
-      "REPLICATE_NO_POLL_URL",
-      "Replicate did not return a result or poll URL"
+      "PROVIDER_NO_POLL_URL",
+      "Removal did not return a result. Please try again."
     );
   }
 
@@ -170,7 +195,7 @@ async function callReplicate(
     if (!pollRes.ok) {
       throw new ApiError(
         502,
-        "REPLICATE_POLL_ERROR",
+        "PROVIDER_POLL_ERROR",
         `Failed to poll prediction: ${pollRes.status}`
       );
     }
@@ -201,7 +226,7 @@ function normalizeOutput(output: unknown): string {
     if (typeof obj.image === "string") return obj.image;
     if (typeof obj.output === "string") return obj.output;
   }
-  throw new Error("Unexpected response format from Replicate");
+  throw new Error("Unexpected response format from the removal provider");
 }
 
 async function toDataUrl(result: string, deadline: number): Promise<string> {

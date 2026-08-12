@@ -22,7 +22,8 @@ function isKnownLightFailure(
   return (
     code === "PREDICTION_TIMEOUT" ||
     code === "PAYLOAD_TOO_LARGE" ||
-    code === "REPLICATE_RATE_LIMIT"
+    code === "REPLICATE_RATE_LIMIT" ||
+    code === "PROVIDER_RATE_LIMIT"
   );
 }
 
@@ -77,14 +78,18 @@ export function formatLightApiError(
   if (code === "PAYLOAD_TOO_LARGE" || status === 413) {
     return "That photo is too large for the Worker. Use a file under ~10 MB.";
   }
-  if (code === "REPLICATE_RATE_LIMIT" || status === 429) {
+  if (code === "REPLICATE_RATE_LIMIT" || code === "PROVIDER_RATE_LIMIT" || status === 429) {
     return "Removal provider is rate-limiting requests. Try again shortly.";
   }
   if (
     code === "REPLICATE_AUTH" ||
     code === "REPLICATE_ERROR" ||
     code === "REPLICATE_NO_POLL_URL" ||
-    code === "REPLICATE_POLL_ERROR"
+    code === "REPLICATE_POLL_ERROR" ||
+    code === "PROVIDER_AUTH" ||
+    code === "PROVIDER_ERROR" ||
+    code === "PROVIDER_NO_POLL_URL" ||
+    code === "PROVIDER_POLL_ERROR"
   ) {
     return "Removal failed. Please try again.";
   }
