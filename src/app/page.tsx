@@ -1,3 +1,5 @@
+import type { Metadata } from "next";
+
 import Hero from "@/components/Hero";
 import RemoveTypes from "@/components/RemoveTypes";
 import AIGeneratorPromo from "@/components/AIGeneratorPromo";
@@ -7,6 +9,12 @@ import HowItWorks from "@/components/HowItWorks";
 import WhyUs from "@/components/WhyUs";
 import Limitations from "@/components/Limitations";
 import FAQ from "@/components/FAQ";
+
+export const metadata: Metadata = {
+  alternates: {
+    canonical: "/",
+  },
+};
 
 const featureSections = [
   {
