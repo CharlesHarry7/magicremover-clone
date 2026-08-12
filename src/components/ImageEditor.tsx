@@ -1102,8 +1102,8 @@ export default function ImageEditor({
       className="mx-auto max-w-4xl scroll-mt-24"
       aria-busy={loading || undefined}
     >
-      <div className="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
-        <span className="inline-flex items-center gap-1.5">
+      <div className="mb-3 flex items-center justify-end gap-3 text-xs text-muted-foreground sm:justify-between">
+        <span className="hidden items-center gap-1.5 sm:inline-flex">
           <EraserIcon className="size-3.5" aria-hidden="true" />
           Upload → brush → remove → download
         </span>
@@ -1119,7 +1119,7 @@ export default function ImageEditor({
       {serviceAlert}
 
       <ol
-        className="mb-3 flex flex-nowrap items-center justify-start gap-1.5 overflow-x-auto text-xs sm:justify-center"
+        className="mb-3 grid w-full grid-cols-4 gap-1 text-xs"
         aria-label="Object remover steps"
       >
         {stepLabels.map((label, index) => {
@@ -1130,15 +1130,23 @@ export default function ImageEditor({
             <li
               key={label}
               className={cn(
-                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1",
+                "inline-flex items-center justify-center gap-1 rounded-full px-1.5 py-1 text-[11px] sm:gap-1.5 sm:px-2.5 sm:text-xs",
                 active && "bg-primary text-primary-foreground",
                 done && !active && "bg-success/10 text-success",
                 !active && !done && "bg-muted text-muted-foreground"
               )}
               aria-current={active ? "step" : undefined}
+              aria-label={label}
             >
               <span className="font-semibold tabular-nums">{n}</span>
-              {label}
+              {label === "Download" ? (
+                <>
+                  <span className="sm:hidden">Save</span>
+                  <span className="hidden sm:inline">Download</span>
+                </>
+              ) : (
+                label
+              )}
             </li>
           );
         })}
