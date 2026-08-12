@@ -3,8 +3,8 @@ import { FREE_EDITS_STORY } from "@/lib/remove-limits";
 
 const benefits = [
   {
-    title: "Free demo",
-    description: `${FREE_EDITS_STORY} — no credit card and no trial wall.`,
+    title: "Session demo",
+    description: `${FREE_EDITS_STORY} — no credit card and no trial wall. Not an unlimited forever-free quota.`,
   },
   {
     title: "No signup",
@@ -13,7 +13,7 @@ const benefits = [
   {
     title: "Honest failures",
     description:
-      "If removal isn’t configured or a request times out, you get a clear error — never a fake success image.",
+      "If removal isn’t available or a request times out, you get a clear error — never a fake success image.",
   },
   {
     title: "Privacy-first",
@@ -30,7 +30,7 @@ export default function WhyUs() {
           Why MagicRemover
         </h2>
         <p className="mb-10 text-center text-lg text-muted-foreground">
-          Free, fast, and refreshingly honest.
+          A free session demo — fast, and honest about limits.
         </p>
 
         <div className="grid gap-6 sm:grid-cols-2">

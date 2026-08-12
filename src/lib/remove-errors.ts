@@ -1,10 +1,12 @@
-/** Copy-locked. Do not add punctuation, codes, or env-var names. */
+/** Copy-locked ZH title. Do not add punctuation, codes, or env-var names. */
 export const SERVICE_UNAVAILABLE_ZH = "去物服务暂未开通，请稍后再试";
+/** EN description under the locked ZH title — honest, no secrets. */
 export const SERVICE_UNAVAILABLE_EN =
-  "Object removal isn’t available right now. Please try again later.";
+  "Object removal isn’t available in this preview right now. You can still upload and brush a mask — try Remove again later.";
 
 /** Neutral JSON `error` for missing-key 503 — never include env-var names. */
-export const SERVICE_UNAVAILABLE_API_ERROR = "Object removal is not available.";
+export const SERVICE_UNAVAILABLE_API_ERROR =
+  "Object removal is not available right now.";
 
 /** Leaked provider/env names that must never appear in the UI. */
 const SECRET_LEAK =

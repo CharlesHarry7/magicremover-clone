@@ -20,9 +20,10 @@ const geistMono = Geist_Mono({
 
 const siteUrl = getSiteUrl() || PRODUCTION_SITE_URL;
 
-const title = "Free AI Object Remover — No Signup, No Watermark | MagicRemover";
+const title =
+  "AI Object Remover Demo — No Signup, No Watermark | MagicRemover";
 const description =
-  "Erase unwanted objects, people, text, or watermarks from photos. Upload, brush a mask, run AI remove, compare before/after, and download — no signup.";
+  "Erase unwanted objects, people, text, or watermarks from photos. Upload, brush a mask, run AI remove, compare before/after, and download. Free session demo — no signup.";
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

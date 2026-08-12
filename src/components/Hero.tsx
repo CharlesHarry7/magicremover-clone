@@ -132,19 +132,19 @@ export default function Hero() {
             variant="secondary"
             className="bg-success/10 text-success hover:bg-success/10"
           >
-            No signup
-          </Badge>
-          <Badge
-            variant="secondary"
-            className="bg-success/10 text-success hover:bg-success/10"
-          >
             {FREE_EDITS_STORY}
           </Badge>
           <Badge
             variant="secondary"
             className="bg-success/10 text-success hover:bg-success/10"
           >
-            HD Download
+            No signup
+          </Badge>
+          <Badge
+            variant="secondary"
+            className="bg-success/10 text-success hover:bg-success/10"
+          >
+            HD download in demo
           </Badge>
         </div>
 
@@ -152,12 +152,12 @@ export default function Hero() {
           id={headingId}
           className="mx-auto mb-4 max-w-3xl text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
         >
-          Free AI Object Remover — Erase Anything from Your Photos
+          AI Object Remover — Erase Anything from Your Photos
         </h1>
 
         <p className="mx-auto mb-10 max-w-2xl text-center text-base leading-relaxed text-muted-foreground">
-          Erase anything from your photos in seconds. Brush any object, person,
-          text, or watermark out of a photo — no signup, no watermark.{" "}
+          Brush any object, person, text, or watermark out of a photo — no
+          signup and no watermark on the result. This page is a free demo:{" "}
           {FREE_EDITS_STORY}.
         </p>
 

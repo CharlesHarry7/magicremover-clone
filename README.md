@@ -81,11 +81,24 @@ Worker binding typings live in slim `cloudflare-env.d.ts`. Regenerate a full dum
 | `npm run smoke:deployed -- <url>` | Curl-check CSS/JS/media/cases on a live preview URL |
 | `npm run cf-typegen` | Regenerate Worker env types |
 
+## QA preview (do not merge to “fix” production)
+
+Keep QA on a **non-prod** surface. Merging to `main` does not repair a broken `pages.dev` that is missing OpenNext ASSETS.
+
+| Goal | Command | Notes |
+| --- | --- | --- |
+| Local Workers QA | `npm run preview` | Builds OpenNext, gates ASSETS, serves locally (default `http://127.0.0.1:8787`) |
+| Non-prod Workers version | `npm run upload` or `npm run deploy:preview` | `wrangler versions upload` — prints a preview URL; **does not promote** production traffic |
+| Smoke CSS/cases | `npm run smoke:deployed -- <preview-url>` | Fails if HTML 200 but `/_next/static` or `/cases` 404 |
+| Optional tunnel | quick Tunnel / `cloudflared tunnel --url http://127.0.0.1:8787` after `npm run preview` | Handy when CF auth is unavailable |
+
+A `*.pages.dev` hostname is usable for QA **only** after a Workers OpenNext deploy/upload that includes `.open-next/assets` and `smoke:deployed` shows CSS **200**. Until then, prefer `npm run preview` or the version preview URL from `npm run upload`.
+
 ## Deploy (Cloudflare Workers + OpenNext ASSETS)
 
 Config: `open-next.config.ts` + `wrangler.jsonc` (worker name `magicremover-clone`, `nodejs_compat`, `assets.directory: .open-next/assets`, `ASSETS` binding).
 
-**Correct path (required):**
+**Production path (manual; not required for PR QA):**
 
 ```bash
 npm run deploy

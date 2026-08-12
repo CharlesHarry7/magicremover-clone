@@ -17,11 +17,11 @@ const faqs = [
   },
   {
     question: "Is it really free?",
-    answer: `Yes. There is no paywall here. ${FREE_EDITS_STORY}. No account is required.`,
+    answer: `Yes — this is a free session demo with no paywall. ${FREE_EDITS_STORY}. It is not an unlimited forever-free quota. No account is required.`,
   },
   {
     question: "How many photos can I edit?",
-    answer: `${FREE_EDITS_STORY}. This build does not add extra edits when signed in, and there is no daily quota.`,
+    answer: `${FREE_EDITS_STORY}. This build does not add extra edits when signed in, and there is no daily quota beyond that session counter.`,
   },
   {
     question: "Do I need an account?",

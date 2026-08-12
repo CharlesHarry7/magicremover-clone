@@ -1441,95 +1441,116 @@ export default function ImageEditor({
             ) : null}
           </div>
 
-          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
-            <div className="flex min-w-[14rem] flex-1 flex-col gap-2">
-              <div className="flex items-center gap-3">
-                <Label
-                  htmlFor="brush-size"
-                  className="text-xs text-muted-foreground"
-                >
-                  Brush
-                </Label>
+          <div className="mb-4 space-y-3">
+            <div className="flex items-center gap-2 sm:gap-3">
+              <Label
+                htmlFor="brush-size"
+                className="shrink-0 text-xs text-muted-foreground"
+              >
+                Brush
+              </Label>
+              <span
+                aria-hidden="true"
+                className="inline-flex size-7 shrink-0 items-center justify-center sm:size-8"
+                title={`${brushSize}px brush`}
+              >
                 <span
-                  aria-hidden="true"
-                  className="inline-flex size-8 shrink-0 items-center justify-center"
-                  title={`${brushSize}px brush`}
-                >
-                  <span
-                    className="rounded-full border-2 border-red-500/80 bg-red-500/15"
-                    style={{
-                      width: Math.max(8, Math.min(28, brushSize * 0.45)),
-                      height: Math.max(8, Math.min(28, brushSize * 0.45)),
-                    }}
-                  />
-                </span>
-                <Slider
-                  id="brush-size"
-                  className="max-w-none flex-1 sm:max-w-[12rem]"
-                  min={5}
-                  max={80}
-                  step={1}
-                  value={[brushSize]}
-                  onValueChange={(value) => {
-                    const next = Array.isArray(value) ? value[0] : value;
-                    if (typeof next === "number") setBrushSize(next);
+                  className="rounded-full border-2 border-red-500/80 bg-red-500/15"
+                  style={{
+                    width: Math.max(8, Math.min(28, brushSize * 0.45)),
+                    height: Math.max(8, Math.min(28, brushSize * 0.45)),
                   }}
                 />
-                <span className="text-xs font-medium tabular-nums">
-                  {brushSize}px
-                </span>
-              </div>
-              <div
-                className="flex flex-wrap gap-1"
-                role="group"
-                aria-label="Brush size presets"
-              >
-                {BRUSH_PRESETS.map((size) => (
-                  <Button
-                    key={size}
-                    size="sm"
-                    className="min-h-9"
-                    variant={nearestPreset === size ? "secondary" : "outline"}
-                    aria-pressed={nearestPreset === size}
-                    onClick={() => setBrushSize(size)}
-                  >
-                    {size === 12 ? "Fine" : size === 30 ? "Medium" : "Broad"}
-                  </Button>
-                ))}
-              </div>
+              </span>
+              <Slider
+                id="brush-size"
+                className="min-w-0 flex-1 sm:max-w-[14rem]"
+                min={5}
+                max={80}
+                step={1}
+                value={[brushSize]}
+                onValueChange={(value) => {
+                  const next = Array.isArray(value) ? value[0] : value;
+                  if (typeof next === "number") setBrushSize(next);
+                }}
+              />
+              <span className="w-10 shrink-0 text-right text-xs font-medium tabular-nums">
+                {brushSize}px
+              </span>
             </div>
-            <div className="flex flex-wrap gap-2">
-              <Button
+
+            {/* Narrow: stacked equal-width rows. sm+: presets left, actions right. */}
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <ToggleGroup
                 variant="outline"
                 size="sm"
-                className="min-h-9"
-                onClick={handleUndo}
-                disabled={drawingHistory.length === 0 || loading}
-              >
-                Undo
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-9"
-                onClick={clearMask}
-                disabled={!hasMask || loading}
-              >
-                Clear
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="min-h-9"
-                disabled={loading}
-                onClick={() => {
-                  setImage(null);
-                  setBeforeUrl("");
-                  clearMask();
+                spacing={0}
+                aria-label="Brush size presets"
+                className="grid w-full grid-cols-3 sm:flex sm:w-auto"
+                value={[String(nearestPreset)]}
+                onValueChange={(group) => {
+                  const raw = group[0];
+                  if (raw == null) return;
+                  const next = Number(raw);
+                  if (
+                    (BRUSH_PRESETS as readonly number[]).includes(next)
+                  ) {
+                    setBrushSize(next);
+                  }
                 }}
               >
-                New Image
-              </Button>
+                {BRUSH_PRESETS.map((size) => (
+                  <ToggleGroupItem
+                    key={size}
+                    value={String(size)}
+                    className="min-h-9 px-2"
+                    aria-label={
+                      size === 12
+                        ? "Fine brush"
+                        : size === 30
+                          ? "Medium brush"
+                          : "Broad brush"
+                    }
+                  >
+                    {size === 12 ? "Fine" : size === 30 ? "Medium" : "Broad"}
+                  </ToggleGroupItem>
+                ))}
+              </ToggleGroup>
+
+              <div className="grid w-full grid-cols-3 gap-1.5 sm:flex sm:w-auto sm:justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-9 w-full sm:w-auto"
+                  onClick={handleUndo}
+                  disabled={drawingHistory.length === 0 || loading}
+                >
+                  Undo
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-9 w-full sm:w-auto"
+                  onClick={clearMask}
+                  disabled={!hasMask || loading}
+                >
+                  Clear
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="min-h-9 w-full sm:w-auto"
+                  disabled={loading}
+                  onClick={() => {
+                    setImage(null);
+                    setBeforeUrl("");
+                    clearMask();
+                  }}
+                >
+                  <span className="sm:hidden">New</span>
+                  <span className="hidden sm:inline">New Image</span>
+                </Button>
+              </div>
             </div>
           </div>
 
