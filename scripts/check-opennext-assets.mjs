@@ -4,7 +4,7 @@
  *
  * Verifies:
  * 1) `.open-next/assets` exists and contains `_next/static` + public cases/logo
- * 2) Every `/_next/static/*` path referenced by built HTML under assets is on disk
+ * 2) Every `/_next/static/*` path referenced by built HTML (Next + OpenNext) exists on disk under ASSETS
  *
  * Usage: node scripts/check-opennext-assets.mjs
  * Optional: OPEN_NEXT_ASSETS=.open-next/assets
@@ -83,7 +83,17 @@ if (missingPublic.length > 0) {
   );
 }
 
-const htmlFiles = walkFiles(assetsDir).filter((f) => f.endsWith(".html"));
+// HTML lives in Next/OpenNext server output, not always copied into ASSETS.
+const htmlRoots = [
+  path.join(root, ".next", "server"),
+  path.join(root, ".open-next", "server-functions"),
+  assetsDir,
+].filter((dir) => existsSync(dir));
+
+const htmlFiles = htmlRoots.flatMap((dir) =>
+  walkFiles(dir).filter((f) => f.endsWith(".html"))
+);
+
 const referenced = new Set();
 const refRe = /\/_next\/static\/[A-Za-z0-9._\-\/]+/g;
 for (const file of htmlFiles) {
@@ -91,6 +101,12 @@ for (const file of htmlFiles) {
   for (const match of html.match(refRe) || []) {
     referenced.add(match.split("?")[0]);
   }
+}
+
+if (referenced.size === 0) {
+  fail(
+    "no /_next/static references found in built HTML under .next/server or .open-next — cannot verify ASSETS completeness."
+  );
 }
 
 const missingRefs = [];
@@ -101,7 +117,7 @@ for (const assetPath of referenced) {
 
 if (missingRefs.length > 0) {
   fail(
-    `HTML references ${missingRefs.length} missing /_next/static asset(s):\n  - ${missingRefs
+    `HTML references ${missingRefs.length} missing /_next/static asset(s) in ASSETS:\n  - ${missingRefs
       .slice(0, 30)
       .join("\n  - ")}${missingRefs.length > 30 ? "\n  - …" : ""}`
   );
