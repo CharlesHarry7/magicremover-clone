@@ -83,16 +83,41 @@ Worker binding typings live in slim `cloudflare-env.d.ts`. Regenerate a full dum
 
 ## QA preview (do not merge to “fix” production)
 
-Keep QA on a **non-prod** surface. Merging to `main` does not repair a broken `pages.dev` that is missing OpenNext ASSETS.
+Keep QA on a **non-prod** surface. **Merging to `main` does not repair** a broken `pages.dev`.
+
+### Root cause (current `magicremover-clone.pages.dev`)
+
+Not a Next `basePath` / `assetPrefix` bug. Repo config has **no** `basePath`/`assetPrefix`; OpenNext expects Workers Static Assets from `.open-next/assets` with `wrangler.jsonc` → `assets.directory` + `ASSETS` binding, and SSR/HTML from `.open-next/worker.js`.
+
+Live edge symptoms observed:
+
+- `/` → **empty 404** with `_headers` security headers (ASSETS answering; **Worker not serving** the OpenNext HTML/SSR)
+- Some `/_next/static/*` → **200**, others (including current CSS hash) → **404** (stale/partial ASSETS vs build)
+- `/cases/*` may **200** while the app shell stays unstyled/unhydrated because CSS/JS chunks 404
+
+That is a **broken/partial Workers publish** (or a Pages git/`next build` surface that never uploaded the OpenNext ASSETS+Worker pair)—not a missing `public/` file in the repo.
+
+### How to open a working preview for QA
 
 | Goal | Command | Notes |
 | --- | --- | --- |
-| Local Workers QA | `npm run preview` | Builds OpenNext, gates ASSETS, serves locally (default `http://127.0.0.1:8787`) |
-| Non-prod Workers version | `npm run upload` or `npm run deploy:preview` | `wrangler versions upload` — prints a preview URL; **does not promote** production traffic |
-| Smoke CSS/cases | `npm run smoke:deployed -- <preview-url>` | Fails if HTML 200 but `/_next/static` or `/cases` 404 |
-| Optional tunnel | quick Tunnel / `cloudflared tunnel --url http://127.0.0.1:8787` after `npm run preview` | Handy when CF auth is unavailable |
+| Local Workers QA (always works offline) | `npm run preview` | OpenNext build + `check:assets` + Wrangler; default `http://127.0.0.1:8787` |
+| Optional public tunnel | after preview: `cloudflared tunnel --url http://127.0.0.1:8787` | Use when `wrangler` has no Cloudflare auth |
+| Non-prod Workers version | `npm run upload` or `npm run deploy:preview` | Needs `CLOUDFLARE_API_TOKEN` / `wrangler login`; **does not promote** production |
+| Smoke CSS/cases/home | `npm run smoke:deployed -- <preview-url>` | Fails if home/CSS/cases are not **200** |
 
-A `*.pages.dev` hostname is usable for QA **only** after a Workers OpenNext deploy/upload that includes `.open-next/assets` and `smoke:deployed` shows CSS **200**. Until then, prefer `npm run preview` or the version preview URL from `npm run upload`.
+```bash
+npm ci
+npm run preview
+# another terminal (optional public URL):
+cloudflared tunnel --url http://127.0.0.1:8787
+npm run smoke:deployed -- http://127.0.0.1:8787
+# With Cloudflare auth (preferred for shareable Workers preview):
+npm run upload
+npm run smoke:deployed -- https://<version-preview-or-workers-dev-url>
+```
+
+A `*.pages.dev` hostname is usable for QA **only** after `npm run upload` / `npm run deploy` (OpenNext) and `smoke:deployed` shows home + CSS **200**. Until then, use local preview or the tunnel URL.
 
 ## Deploy (Cloudflare Workers + OpenNext ASSETS)
 

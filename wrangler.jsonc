@@ -1,16 +1,15 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
 	// OpenNext Cloudflare Worker + Workers Static Assets (ASSETS).
-	// REQUIRED deploy path (uploads worker.js AND .open-next/assets):
-	//   npm run deploy
-	//   # = opennextjs-cloudflare build && check:assets && opennextjs-cloudflare deploy
-	// Preview version (non-promoting upload with assets):
-	//   npm run upload
-	// DO NOT use Cloudflare Pages git integration with `next build` only —
-	// that publishes HTML/Worker without the OpenNext ASSETS bundle and yields
-	// HTML 200 + /_next/static/* 404 (and /cases/* 404). Prefer Workers.
+	// REQUIRED: always publish Worker (main) AND assets.directory together via
+	//   npm run deploy   # or npm run upload (non-prod version)
+	//   = opennextjs-cloudflare build && check:assets && opennextjs-cloudflare …
+	// DO NOT use Cloudflare Pages git / `next build` / assets-only uploads.
+	// Broken edge looks like: empty `/` 404 (ASSETS _headers, no SSR Worker) +
+	// mixed `/_next/static/*` 404 (stale ASSETS) → unstyled bare HTML, no hydrate.
 	// If magicremover-clone.pages.dev is still bound to a legacy Pages project,
 	// disconnect/delete that Pages project in the dashboard, then redeploy here.
+	// Prefer workers.dev for QA until pages.dev is unbound + redeployed.
 	"main": ".open-next/worker.js",
 	"name": "magicremover-clone",
 	"compatibility_date": "2026-08-12",
