@@ -3,6 +3,9 @@
 /** Session demo edits before the UI blocks further removes (refresh resets). */
 export const FREE_EDITS = 2;
 
+/** Canonical quota story — keep every visible string in sync with FREE_EDITS. */
+export const FREE_EDITS_STORY = `${FREE_EDITS} demo edits per browser session (refresh resets)`;
+
 /** Max upload size accepted by the editor. */
 export const MAX_UPLOAD_BYTES = 10 * 1024 * 1024;
 

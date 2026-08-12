@@ -6,7 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
-import { FREE_EDITS } from "@/lib/remove-limits";
+import { FREE_EDITS_STORY } from "@/lib/remove-limits";
 
 const faqs = [
   {
@@ -16,11 +16,11 @@ const faqs = [
   },
   {
     question: "Is it really free?",
-    answer: `Yes. There is no paywall here. The editor offers ${FREE_EDITS} demo edits per browser session (refresh resets the counter). No account is required.`,
+    answer: `Yes. There is no paywall here. ${FREE_EDITS_STORY}. No account is required.`,
   },
   {
     question: "How many photos can I edit?",
-    answer: `This build tracks ${FREE_EDITS} demo edits in memory for the current page session. It does not implement sign-in bonuses or a persistent daily quota.`,
+    answer: `${FREE_EDITS_STORY}. This build does not add extra edits when signed in, and there is no daily quota.`,
   },
   {
     question: "Do I need an account?",
@@ -34,7 +34,7 @@ const faqs = [
   {
     question: "What if removal is not configured?",
     answer:
-      "If the server is missing its removal credentials, the API returns HTTP 503 with code MISSING_API_KEY instead of a fake success image.",
+      "You’ll see a notice: 去物服务暂未开通，请稍后再试。 You can still upload a photo and try again later — we never show a fake success image.",
   },
   {
     question: "Can I remove people, watermarks, and text?",

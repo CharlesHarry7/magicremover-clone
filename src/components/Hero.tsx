@@ -1,10 +1,11 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import Image from "next/image";
-import { UploadIcon } from "lucide-react";
+import { AlertCircleIcon, UploadIcon } from "lucide-react";
 
 import ImageEditor from "./ImageEditor";
+import SafeImage from "@/components/SafeImage";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
@@ -15,7 +16,11 @@ import {
   demoTabFromSlug,
   syncDemoTabInUrl,
 } from "@/lib/demo-tabs";
-import { FREE_EDITS } from "@/lib/remove-limits";
+import {
+  SERVICE_UNAVAILABLE_EN,
+  SERVICE_UNAVAILABLE_ZH,
+} from "@/lib/remove-errors";
+import { FREE_EDITS_STORY } from "@/lib/remove-limits";
 
 const beforeAfterImages: Record<
   DemoTab,
@@ -68,6 +73,7 @@ export default function Hero() {
   const [mode, setMode] = useState<"demo" | "editor">("demo");
   const [initialFile, setInitialFile] = useState<File | null>(null);
   const [editorKey, setEditorKey] = useState(0);
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const editorRegionRef = useRef<HTMLDivElement>(null);
   const images = beforeAfterImages[activeTab];
@@ -126,19 +132,13 @@ export default function Hero() {
             variant="secondary"
             className="bg-success/10 text-success hover:bg-success/10"
           >
-            100% Free
+            No signup
           </Badge>
           <Badge
             variant="secondary"
             className="bg-success/10 text-success hover:bg-success/10"
           >
-            Forever Free
-          </Badge>
-          <Badge
-            variant="secondary"
-            className="bg-success/10 text-success hover:bg-success/10"
-          >
-            No Login
+            {FREE_EDITS_STORY}
           </Badge>
           <Badge
             variant="secondary"
@@ -157,8 +157,8 @@ export default function Hero() {
 
         <p className="mx-auto mb-10 max-w-2xl text-center text-base leading-relaxed text-muted-foreground">
           Erase anything from your photos in seconds. Brush any object, person,
-          text, or watermark out of a photo — no signup, no watermark. Two demo
-          edits per browser session.
+          text, or watermark out of a photo — no signup, no watermark.{" "}
+          {FREE_EDITS_STORY}.
         </p>
 
         <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
@@ -195,6 +195,17 @@ export default function Hero() {
           </Button>
         </div>
 
+        {serviceUnavailable && mode === "demo" ? (
+          <Alert
+            variant="destructive"
+            className="sticky top-[3.25rem] z-40 mx-auto mb-4 max-w-4xl"
+          >
+            <AlertCircleIcon />
+            <AlertTitle>{SERVICE_UNAVAILABLE_ZH}</AlertTitle>
+            <AlertDescription>{SERVICE_UNAVAILABLE_EN}</AlertDescription>
+          </Alert>
+        ) : null}
+
         <p id={statusId} className="sr-only" aria-live="polite">
           {mode === "editor"
             ? "Object remover editor is open."
@@ -207,7 +218,7 @@ export default function Hero() {
               <>
                 <div className="mb-4 flex flex-col gap-4 sm:flex-row">
                   <figure className="relative flex-1 overflow-hidden rounded-xl bg-muted">
-                    <Image
+                    <SafeImage
                       src={images.before}
                       alt={`Example ${activeTab.toLowerCase()} removal — before`}
                       width={600}
@@ -221,7 +232,7 @@ export default function Hero() {
                     </Badge>
                   </figure>
                   <figure className="relative flex-1 overflow-hidden rounded-xl bg-muted">
-                    <Image
+                    <SafeImage
                       src={images.after}
                       alt={`Example ${activeTab.toLowerCase()} removal — after`}
                       width={600}
@@ -294,7 +305,7 @@ export default function Hero() {
                       variant="secondary"
                       className="bg-success/10 text-success hover:bg-success/10"
                     >
-                      Demo edits {FREE_EDITS} / {FREE_EDITS}
+                      {FREE_EDITS_STORY}
                     </Badge>
                     <Button
                       variant="link"
@@ -313,7 +324,11 @@ export default function Hero() {
                 className="outline-none"
                 aria-label="Object remover editor"
               >
-                <ImageEditor key={editorKey} initialFile={initialFile} />
+                <ImageEditor
+                  key={editorKey}
+                  initialFile={initialFile}
+                  onServiceUnavailable={() => setServiceUnavailable(true)}
+                />
               </div>
             )}
           </CardContent>

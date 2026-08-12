@@ -35,10 +35,12 @@ class ApiError extends Error {
 }
 
 function missingKeyResponse() {
+  console.error(
+    "MISSING_API_KEY: set REPLICATE_API_TOKEN in .env.local, .dev.vars, or wrangler secret, then restart/redeploy."
+  );
   return NextResponse.json(
     {
-      error:
-        "Object removal is not configured. Set REPLICATE_API_TOKEN in .env.local (npm run dev), .dev.vars (npm run preview), or as a Cloudflare Worker secret (wrangler secret put REPLICATE_API_TOKEN), then restart/redeploy.",
+      error: "去物服务暂未开通，请稍后再试。",
       code: "MISSING_API_KEY",
     },
     { status: 503 }
@@ -113,7 +115,7 @@ async function callReplicate(
       throw new ApiError(
         502,
         "REPLICATE_AUTH",
-        "Replicate rejected the API token. Check that REPLICATE_API_TOKEN is valid."
+        "The removal service rejected the request. Please try again later."
       );
     }
     if (createRes.status === 429) {

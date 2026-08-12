@@ -11,16 +11,25 @@ import {
   RotateCcwIcon,
   UploadIcon,
 } from "lucide-react";
+import { toast } from "sonner";
 
-import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
+  formatLightApiError,
+  isServiceUnavailable,
+  sanitizeClientError,
+  SERVICE_UNAVAILABLE_EN,
+  SERVICE_UNAVAILABLE_ZH,
+} from "@/lib/remove-errors";
+import {
   CLIENT_ABORT_MS,
   FREE_EDITS,
+  FREE_EDITS_STORY,
   MAX_IMAGE_DIM,
   MAX_UPLOAD_BYTES,
   OVERALL_BUDGET_MS,
@@ -29,31 +38,11 @@ import { cn } from "@/lib/utils";
 
 interface ImageEditorProps {
   initialFile?: File | null;
+  onServiceUnavailable?: () => void;
 }
 
 const MAX_UNDO = 40;
 const BRUSH_PRESETS = [12, 30, 50] as const;
-
-function formatRemoveApiError(
-  status: number,
-  data: { error?: string; code?: string }
-): string {
-  if (data.error) return data.error;
-  const code = data.code;
-  if (code === "MISSING_API_KEY" || status === 503) {
-    return "Object removal is not configured on the server (HTTP 503).";
-  }
-  if (code === "PREDICTION_TIMEOUT" || status === 504) {
-    return "Removal timed out on the Worker (~30s budget). Try a smaller image.";
-  }
-  if (code === "PAYLOAD_TOO_LARGE" || status === 413) {
-    return "That photo is too large for the Worker. Use a file under ~10 MB.";
-  }
-  if (code === "REPLICATE_RATE_LIMIT" || status === 429) {
-    return "Removal provider is rate-limiting requests. Try again shortly.";
-  }
-  return `Failed to process image (HTTP ${status})`;
-}
 
 async function readRemoveApiPayload(res: Response): Promise<{
   error?: string;
@@ -255,7 +244,10 @@ function BeforeAfterCompare({
   );
 }
 
-export default function ImageEditor({ initialFile }: ImageEditorProps) {
+export default function ImageEditor({
+  initialFile,
+  onServiceUnavailable,
+}: ImageEditorProps) {
   const uploadInputId = useId();
   const statusId = useId();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -278,7 +270,7 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [downloading, setDownloading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+  const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [downloadNote, setDownloadNote] = useState<string | null>(null);
   const [beforeUrl, setBeforeUrl] = useState<string>("");
   const [maskPreviewUrl, setMaskPreviewUrl] = useState<string>("");
@@ -319,15 +311,14 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
 
   const handleFileUpload = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
-      setError("Please upload a JPG, PNG, or WebP image.");
+      toast.error("Please upload a JPG, PNG, or WebP image.");
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
-      setError("File size must be under 10 MB.");
+      toast.error("File size must be under 10 MB.");
       return;
     }
 
-    setError(null);
     setDownloadNote(null);
     setResultUrl(null);
     setMaskPreviewUrl("");
@@ -335,17 +326,17 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
 
     const reader = new FileReader();
     reader.onerror = () => {
-      setError("Could not read that file. Try another image.");
+      toast.error("Could not read that file. Try another image.");
     };
     reader.onload = (e) => {
       const dataUrl = e.target?.result;
       if (typeof dataUrl !== "string") {
-        setError("Could not read that file. Try another image.");
+        toast.error("Could not read that file. Try another image.");
         return;
       }
       const img = new window.Image();
       img.onerror = () => {
-        setError("Could not decode that image. Try JPG, PNG, or WebP.");
+        toast.error("Could not decode that image. Try JPG, PNG, or WebP.");
       };
       img.onload = () => {
         let w = img.width;
@@ -789,20 +780,19 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
     if (!canvas || !image) return;
 
     if (sessionLeft <= 0) {
-      setError(
-        "No demo edits left in this session. Refresh the page to reset the counter."
+      toast.error(
+        `No demo edits left in this session. Refresh the page to reset (${FREE_EDITS_STORY}).`
       );
       return;
     }
 
     const binaryMask = buildBinaryMaskDataUrl();
     if (!binaryMask) {
-      setError("Please brush over the area you want to remove first.");
+      toast.error("Please brush over the area you want to remove first.");
       return;
     }
 
     setLoading(true);
-    setError(null);
     setDownloadNote(null);
     setMaskPreviewUrl(maskCanvasRef.current?.toDataURL("image/png") || "");
 
@@ -823,11 +813,18 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
       const data = await readRemoveApiPayload(res);
 
       if (!res.ok) {
-        throw new Error(formatRemoveApiError(res.status, data));
+        if (isServiceUnavailable(res.status, data)) {
+          setServiceUnavailable(true);
+          onServiceUnavailable?.();
+          return;
+        }
+        toast.error(formatLightApiError(res.status, data));
+        return;
       }
 
       if (typeof data.result !== "string") {
-        throw new Error("Invalid response from remove API");
+        toast.error("Invalid response from remove API");
+        return;
       }
 
       setResultUrl(data.result);
@@ -843,21 +840,28 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
       }, 80);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
-        setError(
+        toast.error(
           `Request aborted after ~${Math.round(CLIENT_ABORT_MS / 1000)}s with no response. The Worker usually returns HTTP 504 around ${Math.round(OVERALL_BUDGET_MS / 1000)}s — try a smaller image.`
         );
       } else if (err instanceof TypeError) {
-        setError(
+        toast.error(
           "Network error talking to /api/remove-object. Check your connection and try again."
         );
       } else {
-        setError(err instanceof Error ? err.message : "Something went wrong");
+        const message =
+          err instanceof Error ? err.message : "Something went wrong";
+        if (isServiceUnavailable(0, { error: message })) {
+          setServiceUnavailable(true);
+          onServiceUnavailable?.();
+        } else {
+          toast.error(sanitizeClientError(message));
+        }
       }
     } finally {
       window.clearTimeout(timeoutId);
       setLoading(false);
     }
-  }, [image, sessionLeft, buildBinaryMaskDataUrl]);
+  }, [image, sessionLeft, buildBinaryMaskDataUrl, onServiceUnavailable]);
 
   const blobFromResult = useCallback(async (url: string) => {
     if (url.startsWith("data:")) {
@@ -925,7 +929,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
   const handleShare = useCallback(async () => {
     if (!resultUrl || downloading) return;
     setDownloading(true);
-    setError(null);
     setDownloadNote(null);
     try {
       const blob = await blobFromResult(resultUrl);
@@ -948,7 +951,7 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
         setDownloadNote("Share canceled.");
         return;
       }
-      setError(
+      toast.error(
         err instanceof Error
           ? err.message
           : "Could not open the share sheet. Try Download instead."
@@ -961,7 +964,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
   const handleDownload = useCallback(async () => {
     if (!resultUrl || downloading) return;
     setDownloading(true);
-    setError(null);
     setDownloadNote(null);
 
     try {
@@ -985,11 +987,11 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
       const message =
         err instanceof Error ? err.message : "Could not download the result.";
       if (resultUrl.startsWith("data:")) {
-        setError(
+        toast.error(
           `${message} Long-press the After image to save it on this device.`
         );
       } else {
-        setError(message);
+        toast.error(message);
         window.open(resultUrl, "_blank", "noopener,noreferrer");
         setDownloadNote("Opened the result in a new tab as a fallback.");
       }
@@ -1000,7 +1002,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
 
   const handleOpenResult = useCallback(() => {
     if (!resultUrl) return;
-    setError(null);
     const opened = window.open(resultUrl, "_blank", "noopener,noreferrer");
     if (!opened && resultUrl.startsWith("data:")) {
       setDownloadNote(
@@ -1018,7 +1019,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
     setResultUrl(null);
     setMaskPreviewUrl("");
     clearMask();
-    setError(null);
     setDownloadNote(null);
     setCursorPos(null);
   }, [clearMask]);
@@ -1040,17 +1040,10 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
         ? 3
         : 2;
 
-  const errorBanner = error ? (
-    <Alert variant="destructive" className="mt-3">
-      <AlertCircleIcon />
-      <AlertDescription>{error}</AlertDescription>
-    </Alert>
-  ) : null;
-
   const statusText = loading
     ? "Removing objects. This usually takes 15 to 30 seconds."
-    : error
-      ? error
+    : serviceUnavailable
+      ? SERVICE_UNAVAILABLE_ZH
       : resultUrl
         ? "Removal finished. Compare before and after, then download."
         : image
@@ -1058,6 +1051,14 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
             ? "Mask ready. Press Remove Objects to continue."
             : "Brush over the area you want to erase."
           : "Upload a photo to start.";
+
+  const serviceAlert = serviceUnavailable ? (
+    <Alert variant="destructive" className="mb-3">
+      <AlertCircleIcon />
+      <AlertTitle>{SERVICE_UNAVAILABLE_ZH}</AlertTitle>
+      <AlertDescription>{SERVICE_UNAVAILABLE_EN}</AlertDescription>
+    </Alert>
+  ) : null;
 
   const stepLabels = ["Upload", "Brush", "Remove", "Download"] as const;
 
@@ -1075,10 +1076,13 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
         <Badge
           variant="secondary"
           className="bg-success/10 text-success hover:bg-success/10"
+          title={FREE_EDITS_STORY}
         >
           Demo edits {sessionLeft} / {FREE_EDITS}
         </Badge>
       </div>
+
+      {serviceAlert}
 
       <ol
         className="mb-3 flex flex-wrap items-center justify-center gap-1.5 text-xs"
@@ -1146,7 +1150,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               e.target.value = "";
             }}
           />
-          {errorBanner}
         </div>
       ) : resultUrl ? (
         <div>
@@ -1306,7 +1309,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               onClick={() => {
                 setResultUrl(null);
                 setMaskPreviewUrl("");
-                setError(null);
                 setDownloadNote(null);
                 clearMask();
               }}
@@ -1324,7 +1326,7 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               New Image
             </Button>
           </div>
-          {!downloadNote && !error ? (
+          {!downloadNote ? (
             <Alert className="mt-3">
               <DownloadIcon />
               <AlertDescription>
@@ -1338,7 +1340,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               <AlertDescription>{downloadNote}</AlertDescription>
             </Alert>
           ) : null}
-          {errorBanner}
         </div>
       ) : (
         <div>
@@ -1510,7 +1511,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
                 onClick={() => {
                   setImage(null);
                   setBeforeUrl("");
-                  setError(null);
                   clearMask();
                 }}
               >
@@ -1539,7 +1539,7 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
           {!loading && (sessionLeft <= 0 || !hasMask) ? (
             <p className="mt-2 text-center text-xs text-muted-foreground">
               {sessionLeft <= 0
-                ? "No demo edits left in this session. Refresh the page to reset."
+                ? `No demo edits left. ${FREE_EDITS_STORY}.`
                 : "Brush a mask first, then remove. One-finger paint; Undo with Ctrl/⌘+Z."}
             </p>
           ) : hasMask && !loading ? (
@@ -1547,8 +1547,6 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               Mask ready — tap Remove Objects.
             </p>
           ) : null}
-
-          {errorBanner}
         </div>
       )}
     </div>

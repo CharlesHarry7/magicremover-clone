@@ -1,9 +1,10 @@
-import Image from "next/image";
 import Link from "next/link";
 
 import HashNavLink from "@/components/HashNavLink";
+import SafeImage from "@/components/SafeImage";
 import { Separator } from "@/components/ui/separator";
 import { hrefForDemoTab } from "@/lib/demo-tabs";
+import { FREE_EDITS_STORY } from "@/lib/remove-limits";
 
 const allTools = [
   { label: "Remove People from Photo", href: hrefForDemoTab("People") },
@@ -15,7 +16,7 @@ const allTools = [
   { label: "Logo Remover", href: hrefForDemoTab("Sticker") },
   { label: "Magic Eraser", href: hrefForDemoTab("Object") },
   { label: "AI Image Generator", href: "/ai-image-generator" },
-  { label: "Edit Text", href: "/edit-text-in-image" },
+  { label: "Edit Text", href: hrefForDemoTab("Text") },
 ];
 
 const guides = [
@@ -73,11 +74,12 @@ export default function Footer() {
 
           <div>
             <Link href="/" className="mb-3 flex items-center gap-2">
-              <Image
+              <SafeImage
                 src="/logo.webp"
                 alt="MagicRemover"
                 width={28}
                 height={28}
+                compact
                 className="h-7 w-7"
               />
               <span className="font-bold">MagicRemover</span>
@@ -110,8 +112,8 @@ export default function Footer() {
 
         <Separator className="mt-10" />
         <div className="pt-6 text-center text-xs text-muted-foreground">
-          Two demo edits per session · Results are not stored · Stub marketing
-          pages link back to the editor.
+          {FREE_EDITS_STORY} · No signup · Results are not stored · Stub
+          marketing pages link back to the editor.
         </div>
       </div>
     </footer>

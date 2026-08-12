@@ -1,0 +1,44 @@
+/** User-facing copy when object removal is not configured. Never mention env vars. */
+export const SERVICE_UNAVAILABLE_ZH = "去物服务暂未开通，请稍后再试。";
+export const SERVICE_UNAVAILABLE_EN =
+  "Object removal isn’t available right now. Please try again later.";
+
+const SECRET_OR_CONFIG =
+  /REPLICATE_API_TOKEN|REPLICATE_API|process\.env|\.env\.local|\.dev\.vars|wrangler secret|MISSING_API_KEY|not configured/i;
+
+export function isServiceUnavailable(
+  status: number,
+  data: { error?: string; code?: string }
+): boolean {
+  if (data.code === "MISSING_API_KEY") return true;
+  if (status === 503) return true;
+  const blob = `${data.error ?? ""} ${data.code ?? ""}`;
+  return SECRET_OR_CONFIG.test(blob);
+}
+
+/** Strip credential / env-var names from any message shown in the UI. */
+export function sanitizeClientError(message: string): string {
+  if (SECRET_OR_CONFIG.test(message)) return SERVICE_UNAVAILABLE_ZH;
+  return message;
+}
+
+export function formatLightApiError(
+  status: number,
+  data: { error?: string; code?: string }
+): string {
+  if (data.error) {
+    const cleaned = sanitizeClientError(data.error);
+    if (cleaned !== SERVICE_UNAVAILABLE_ZH) return cleaned;
+  }
+  const code = data.code;
+  if (code === "PREDICTION_TIMEOUT" || status === 504) {
+    return "Removal timed out on the Worker (~30s budget). Try a smaller image.";
+  }
+  if (code === "PAYLOAD_TOO_LARGE" || status === 413) {
+    return "That photo is too large for the Worker. Use a file under ~10 MB.";
+  }
+  if (code === "REPLICATE_RATE_LIMIT" || status === 429) {
+    return "Removal provider is rate-limiting requests. Try again shortly.";
+  }
+  return `Failed to process image (HTTP ${status})`;
+}

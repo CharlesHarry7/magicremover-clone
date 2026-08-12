@@ -1,7 +1,7 @@
 import Link from "next/link";
-import Image from "next/image";
 import { CheckIcon } from "lucide-react";
 
+import SafeImage from "@/components/SafeImage";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 
@@ -32,11 +32,12 @@ export default function FeatureDetail({
     <div className="flex-1">
       <div className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1 overflow-hidden rounded-xl bg-muted">
-          <Image
+          <SafeImage
             src={beforeImage}
             alt={`${title} — before`}
             width={600}
             height={450}
+            sizes="(max-width: 640px) 100vw, 400px"
             className="h-full w-full object-cover"
           />
           <Badge className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60">
@@ -44,11 +45,12 @@ export default function FeatureDetail({
           </Badge>
         </div>
         <div className="relative flex-1 overflow-hidden rounded-xl bg-muted">
-          <Image
+          <SafeImage
             src={afterImage}
             alt={`${title} — after`}
             width={600}
             height={450}
+            sizes="(max-width: 640px) 100vw, 400px"
             className="h-full w-full object-cover"
           />
           <Badge className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80">

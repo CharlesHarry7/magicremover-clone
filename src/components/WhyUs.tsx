@@ -1,10 +1,10 @@
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
-import { FREE_EDITS } from "@/lib/remove-limits";
+import { FREE_EDITS_STORY } from "@/lib/remove-limits";
 
 const benefits = [
   {
     title: "Free demo",
-    description: `${FREE_EDITS} demo edits per browser session — no credit card and no trial wall.`,
+    description: `${FREE_EDITS_STORY} — no credit card and no trial wall.`,
   },
   {
     title: "No signup",
