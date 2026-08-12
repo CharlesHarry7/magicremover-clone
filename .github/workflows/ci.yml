@@ -19,6 +19,7 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      - run: npm test
       # Guard: no assetPrefix/basePath; wrangler main + assets.directory + ASSETS binding.
       - run: npm run check:wrangler
       - run: npm run build

@@ -30,13 +30,17 @@ import {
   FREE_EDITS,
   FREE_EDITS_STORY,
   remainingEditsLabel,
-  MAX_IMAGE_DIM,
   OVERALL_BUDGET_MS,
 } from "@/lib/remove-limits";
 import {
+  editorLoopStep,
   fileFromDataTransfer,
   imageFileRejectReason,
 } from "@/lib/image-file";
+import {
+  prepareEditorImage,
+  type PreparedEditorImage,
+} from "@/lib/prepare-editor-image";
 import { cn } from "@/lib/utils";
 import PhotoDropzone from "@/components/PhotoDropzone";
 
@@ -272,7 +276,12 @@ export default function ImageEditor({
   const rafRef = useRef<number | null>(null);
   const bodyOverflowRef = useRef<string | null>(null);
 
-  const [image, setImage] = useState<HTMLImageElement | null>(null);
+  const editorImageRef = useRef<PreparedEditorImage | null>(null);
+  const decodeGenRef = useRef(0);
+  const [editorImage, setEditorImage] = useState<PreparedEditorImage | null>(
+    null
+  );
+  const [opening, setOpening] = useState(false);
   const [brushSize, setBrushSize] = useState(() => {
     if (typeof window === "undefined") return 30;
     return window.matchMedia?.("(pointer: coarse)").matches ? 40 : 30;
@@ -282,11 +291,9 @@ export default function ImageEditor({
   const [downloading, setDownloading] = useState(false);
   const [serviceUnavailable, setServiceUnavailable] = useState(false);
   const [downloadNote, setDownloadNote] = useState<string | null>(null);
-  const [beforeUrl, setBeforeUrl] = useState<string>("");
   const [maskPreviewUrl, setMaskPreviewUrl] = useState<string>("");
   const [sessionLeft, setSessionLeft] = useState(FREE_EDITS);
   const [drawingHistory, setDrawingHistory] = useState<ImageData[]>([]);
-  const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
   const [hasMask, setHasMask] = useState(false);
   const [cursorPos, setCursorPos] = useState<{ x: number; y: number } | null>(
     null
@@ -296,6 +303,31 @@ export default function ImageEditor({
   const [stageWidth, setStageWidth] = useState(0);
   const [shareAvailable, setShareAvailable] = useState(false);
   const [loadingSeconds, setLoadingSeconds] = useState(0);
+
+  const image = editorImage?.source ?? null;
+  const canvasSize = editorImage
+    ? { w: editorImage.width, h: editorImage.height }
+    : { w: 0, h: 0 };
+  const beforeUrl = editorImage?.beforeUrl ?? "";
+  const hasLoadedImage = !!(
+    editorImage &&
+    editorImage.width > 0 &&
+    editorImage.height > 0
+  );
+
+  const replaceEditorImage = useCallback((next: PreparedEditorImage | null) => {
+    editorImageRef.current?.dispose();
+    editorImageRef.current = next;
+    setEditorImage(next);
+  }, []);
+
+  useEffect(() => {
+    return () => {
+      decodeGenRef.current += 1;
+      editorImageRef.current?.dispose();
+      editorImageRef.current = null;
+    };
+  }, []);
 
   const maskHasPaint = useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
@@ -319,67 +351,46 @@ export default function ImageEditor({
     setHasMask(false);
   }, []);
 
-  const handleFileUpload = useCallback((file: File) => {
-    const reason = imageFileRejectReason(file);
-    if (reason) {
-      toast.error(reason);
-      return;
-    }
-
-    setDownloadNote(null);
-    setResultUrl(null);
-    setMaskPreviewUrl("");
-    setHasMask(false);
-
-    const reader = new FileReader();
-    reader.onerror = () => {
-      toast.error("Could not read that file. Try another image.");
-    };
-    reader.onload = (e) => {
-      const dataUrl = e.target?.result;
-      if (typeof dataUrl !== "string") {
-        toast.error("Could not read that file. Try another image.");
+  const handleFileUpload = useCallback(
+    (file: File) => {
+      const reason = imageFileRejectReason(file);
+      if (reason) {
+        toast.error(reason);
         return;
       }
-      const img = new window.Image();
-      img.onerror = () => {
-        toast.error("Could not decode that image. Try JPG, PNG, or WebP.");
-      };
-      img.onload = () => {
-        let w = img.width;
-        let h = img.height;
-        if (!w || !h) {
-          toast.error("Could not decode that image. Try JPG, PNG, or WebP.");
-          return;
-        }
-        if (w > MAX_IMAGE_DIM || h > MAX_IMAGE_DIM) {
-          const ratio = Math.min(MAX_IMAGE_DIM / w, MAX_IMAGE_DIM / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
 
-        // Decode onto an offscreen canvas. The editor canvases are not mounted
-        // until `image` is set (upload step), so drawing on refs here was a
-        // silent no-op and left the UI stuck on “1 Upload”.
-        const offscreen = document.createElement("canvas");
-        offscreen.width = w;
-        offscreen.height = h;
-        const ctx = offscreen.getContext("2d");
-        if (!ctx) {
-          toast.error("Could not prepare that image. Try another photo.");
-          return;
-        }
-        ctx.drawImage(img, 0, 0, w, h);
+      const gen = ++decodeGenRef.current;
+      setDownloadNote(null);
+      setResultUrl(null);
+      setMaskPreviewUrl("");
+      setHasMask(false);
+      setOpening(true);
 
-        setDrawingHistory([]);
-        setCanvasSize({ w, h });
-        setBeforeUrl(offscreen.toDataURL("image/jpeg", 0.92));
-        setImage(img);
-      };
-      img.src = dataUrl;
-    };
-    reader.readAsDataURL(file);
-  }, []);
+      void (async () => {
+        try {
+          const prepared = await prepareEditorImage(file);
+          if (gen !== decodeGenRef.current) {
+            prepared.dispose();
+            return;
+          }
+          // Atomic: source + non-zero size + before preview. Never set image
+          // without canvasSize (that left the step strip on “1 Upload”).
+          setDrawingHistory([]);
+          replaceEditorImage(prepared);
+        } catch (err) {
+          if (gen !== decodeGenRef.current) return;
+          const message =
+            err instanceof Error && err.message
+              ? err.message
+              : "Could not decode that image. Try JPG, PNG, or WebP.";
+          toast.error(message);
+        } finally {
+          if (gen === decodeGenRef.current) setOpening(false);
+        }
+      })();
+    },
+    [replaceEditorImage]
+  );
 
   useEffect(() => {
     if (!initialFile) return;
@@ -1023,13 +1034,15 @@ export default function ImageEditor({
   }, [resultUrl]);
 
   const handleNewImage = useCallback(() => {
-    setImage(null);
+    decodeGenRef.current += 1;
+    setOpening(false);
+    replaceEditorImage(null);
     setResultUrl(null);
     setMaskPreviewUrl("");
     clearMask();
     setDownloadNote(null);
     setCursorPos(null);
-  }, [clearMask]);
+  }, [clearMask, replaceEditorImage]);
 
   const brushPreviewPx =
     canvasSize.w && stageWidth
@@ -1040,25 +1053,26 @@ export default function ImageEditor({
     Math.abs(size - brushSize) < Math.abs(best - brushSize) ? size : best
   );
 
-  const loopStep: 1 | 2 | 3 | 4 = !image
-    ? 1
-    : resultUrl
-      ? 4
-      : loading
-        ? 3
-        : 2;
+  const loopStep = editorLoopStep({
+    hasImage: hasLoadedImage,
+    canvasWidth: canvasSize.w,
+    hasResult: !!resultUrl,
+    loading,
+  });
 
   const statusText = loading
     ? "Removing objects. This usually takes 15 to 30 seconds."
-    : serviceUnavailable
-      ? SERVICE_UNAVAILABLE_ZH
-      : resultUrl
-        ? "Removal finished. Compare before and after, then download."
-        : image
-          ? hasMask
-            ? "Mask ready. Press Remove Objects to continue."
-            : "Brush over the area you want to erase."
-          : "Upload a photo to start.";
+    : opening
+      ? "Opening photo…"
+      : serviceUnavailable
+        ? SERVICE_UNAVAILABLE_ZH
+        : resultUrl
+          ? "Removal finished. Compare before and after, then download."
+          : hasLoadedImage
+            ? hasMask
+              ? "Mask ready. Press Remove Objects to continue."
+              : "Brush over the area you want to erase."
+            : "Upload a photo to start.";
 
   const serviceAlert = serviceUnavailable ? (
     <Alert variant="destructive" className="mb-3">
@@ -1074,7 +1088,7 @@ export default function ImageEditor({
     <div
       id="editor"
       className="mx-auto max-w-4xl scroll-mt-24"
-      aria-busy={loading || undefined}
+      aria-busy={loading || opening || undefined}
     >
       <div className="mb-3 flex items-center justify-end gap-3 text-xs text-muted-foreground sm:justify-between">
         <span className="hidden items-center gap-1.5 sm:inline-flex">
@@ -1093,18 +1107,19 @@ export default function ImageEditor({
       {serviceAlert}
 
       <ol
-        className="mb-3 grid w-full grid-cols-4 gap-1 text-xs"
+        className="mb-3 grid w-full grid-cols-4 gap-0.5 text-xs sm:gap-1"
         aria-label="Object remover steps"
       >
         {stepLabels.map((label, index) => {
           const n = (index + 1) as 1 | 2 | 3 | 4;
           const active = loopStep === n;
           const done = loopStep > n;
+          const short = label === "Download" ? "Save" : label;
           return (
             <li
               key={label}
               className={cn(
-                "inline-flex items-center justify-center gap-1 rounded-full px-1.5 py-1 text-[11px] sm:gap-1.5 sm:px-2.5 sm:text-xs",
+                "flex min-w-0 flex-col items-center justify-center gap-0 rounded-full px-0.5 py-1 text-[10px] leading-none whitespace-nowrap sm:flex-row sm:gap-1.5 sm:px-2.5 sm:text-xs",
                 active && "bg-primary text-primary-foreground",
                 done && !active && "bg-success/10 text-success",
                 !active && !done && "bg-muted text-muted-foreground"
@@ -1113,14 +1128,10 @@ export default function ImageEditor({
               aria-label={label}
             >
               <span className="font-semibold tabular-nums">{n}</span>
-              {label === "Download" ? (
-                <>
-                  <span className="sm:hidden">Save</span>
-                  <span className="hidden sm:inline">Download</span>
-                </>
-              ) : (
-                label
-              )}
+              <span className="max-w-full truncate">
+                <span className="sm:hidden">{short}</span>
+                <span className="hidden sm:inline">{label}</span>
+              </span>
             </li>
           );
         })}
@@ -1134,12 +1145,13 @@ export default function ImageEditor({
         {statusText}
       </p>
 
-      {!image ? (
+      {!hasLoadedImage ? (
         <PhotoDropzone
           id={uploadInputId}
           inputRef={fileInputRef}
           onFile={handleFileUpload}
           size="editor"
+          busy={opening}
           aria-describedby={statusId}
           aria-label="Upload a photo to remove objects"
         />
@@ -1511,8 +1523,9 @@ export default function ImageEditor({
                   className="min-h-9 w-full sm:w-auto"
                   disabled={loading}
                   onClick={() => {
-                    setImage(null);
-                    setBeforeUrl("");
+                    decodeGenRef.current += 1;
+                    setOpening(false);
+                    replaceEditorImage(null);
                     clearMask();
                   }}
                 >

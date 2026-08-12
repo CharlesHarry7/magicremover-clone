@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, type DragEvent, type RefObject } from "react";
-import { UploadIcon } from "lucide-react";
+import { Loader2Icon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import {
@@ -17,6 +17,7 @@ type PhotoDropzoneProps = {
   inputRef: RefObject<HTMLInputElement | null>;
   onFile: (file: File) => void;
   size?: "hero" | "editor";
+  busy?: boolean;
   "aria-label"?: string;
   "aria-describedby"?: string;
 };
@@ -39,6 +40,7 @@ export default function PhotoDropzone({
   inputRef,
   onFile,
   size = "editor",
+  busy = false,
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
 }: PhotoDropzoneProps) {
@@ -50,11 +52,11 @@ export default function PhotoDropzone({
       if (!file) return;
       onFile(file);
     };
+    // `change` is the file-input event. Do not listen to `input` — some mobile
+    // browsers fire an empty `input` first; clearing then aborted the pick.
     el.addEventListener("change", onPicked);
-    el.addEventListener("input", onPicked);
     return () => {
       el.removeEventListener("change", onPicked);
-      el.removeEventListener("input", onPicked);
     };
   }, [inputRef, onFile]);
 
@@ -97,10 +99,12 @@ export default function PhotoDropzone({
     <label
       className={cn(
         "relative block w-full cursor-pointer rounded-xl border-2 border-dashed border-border text-center transition-colors hover:border-primary/50 focus-within:border-ring focus-within:ring-3 focus-within:ring-ring/50",
-        size === "editor" ? "p-12" : "p-8"
+        size === "editor" ? "p-12" : "p-8",
+        busy && "pointer-events-none"
       )}
       aria-label={ariaLabel}
       aria-describedby={ariaDescribedBy}
+      aria-busy={busy || undefined}
       onDragEnter={preventFileDrag}
       onDragOver={preventFileDrag}
       onDrop={onDrop}
@@ -110,29 +114,39 @@ export default function PhotoDropzone({
         ref={inputRef}
         type="file"
         accept={IMAGE_FILE_ACCEPT}
+        disabled={busy}
         className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
         onChange={(e) => {
           const file = fileFromInputElement(e.currentTarget);
           if (!file) return;
           onFile(file);
         }}
-        onInput={(e) => {
-          const file = fileFromInputElement(e.currentTarget);
-          if (!file) return;
-          onFile(file);
-        }}
       />
       <span className="pointer-events-none block">
-        <UploadIcon
-          className={cn(
-            "mx-auto mb-3 text-muted-foreground/40",
-            size === "editor" ? "h-12 w-12" : "h-10 w-10"
-          )}
-          aria-hidden="true"
-        />
-        <p className="mb-1 text-sm font-medium">Drop a photo here</p>
+        {busy ? (
+          <Loader2Icon
+            className={cn(
+              "mx-auto mb-3 animate-spin text-primary",
+              size === "editor" ? "h-12 w-12" : "h-10 w-10"
+            )}
+            aria-hidden="true"
+          />
+        ) : (
+          <UploadIcon
+            className={cn(
+              "mx-auto mb-3 text-muted-foreground/40",
+              size === "editor" ? "h-12 w-12" : "h-10 w-10"
+            )}
+            aria-hidden="true"
+          />
+        )}
+        <p className="mb-1 text-sm font-medium">
+          {busy ? "Opening photo…" : "Drop a photo here"}
+        </p>
         <p className="text-xs text-muted-foreground">
-          or click / paste · JPG / PNG / WebP · up to ~10 MB
+          {busy
+            ? "Decoding on this device — the brush step opens next."
+            : "or click / paste · JPG / PNG / WebP · up to ~10 MB"}
         </p>
       </span>
     </label>
