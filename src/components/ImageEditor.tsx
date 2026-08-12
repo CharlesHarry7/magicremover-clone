@@ -34,6 +34,7 @@ import {
   MAX_UPLOAD_BYTES,
   OVERALL_BUDGET_MS,
 } from "@/lib/remove-limits";
+import { isAllowedImageFile, pickFirstFile } from "@/lib/image-file";
 import { cn } from "@/lib/utils";
 
 interface ImageEditorProps {
@@ -316,8 +317,12 @@ export default function ImageEditor({
   }, []);
 
   const handleFileUpload = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) {
+    if (!isAllowedImageFile(file)) {
       toast.error("Please upload a JPG, PNG, or WebP image.");
+      return;
+    }
+    if (file.size <= 0) {
+      toast.error("That file looks empty. Try another image.");
       return;
     }
     if (file.size > MAX_UPLOAD_BYTES) {
@@ -347,37 +352,33 @@ export default function ImageEditor({
       img.onload = () => {
         let w = img.width;
         let h = img.height;
+        if (!w || !h) {
+          toast.error("Could not decode that image. Try JPG, PNG, or WebP.");
+          return;
+        }
         if (w > MAX_IMAGE_DIM || h > MAX_IMAGE_DIM) {
           const ratio = Math.min(MAX_IMAGE_DIM / w, MAX_IMAGE_DIM / h);
           w = Math.round(w * ratio);
           h = Math.round(h * ratio);
         }
 
-        const canvas = canvasRef.current;
-        const maskCanvas = maskCanvasRef.current;
-        if (!canvas || !maskCanvas) return;
-
-        canvas.width = w;
-        canvas.height = h;
-        maskCanvas.width = w;
-        maskCanvas.height = h;
-        setCanvasSize({ w, h });
-
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.clearRect(0, 0, w, h);
-          ctx.drawImage(img, 0, 0, w, h);
+        // Decode onto an offscreen canvas. The editor canvases are not mounted
+        // until `image` is set (upload step), so drawing on refs here was a
+        // silent no-op and left the UI stuck on “1 Upload”.
+        const offscreen = document.createElement("canvas");
+        offscreen.width = w;
+        offscreen.height = h;
+        const ctx = offscreen.getContext("2d");
+        if (!ctx) {
+          toast.error("Could not prepare that image. Try another photo.");
+          return;
         }
-
-        const maskCtx = maskCanvas.getContext("2d");
-        if (maskCtx) {
-          maskCtx.clearRect(0, 0, w, h);
-        }
+        ctx.drawImage(img, 0, 0, w, h);
 
         setDrawingHistory([]);
+        setCanvasSize({ w, h });
+        setBeforeUrl(offscreen.toDataURL("image/jpeg", 0.92));
         setImage(img);
-        // Use the resized canvas so before/after compare the same pixels.
-        setBeforeUrl(canvas.toDataURL("image/jpeg", 0.92));
       };
       img.src = dataUrl;
     };
@@ -386,13 +387,9 @@ export default function ImageEditor({
 
   useEffect(() => {
     if (!initialFile) return;
-    let cancelled = false;
     queueMicrotask(() => {
-      if (!cancelled) handleFileUpload(initialFile);
+      handleFileUpload(initialFile);
     });
-    return () => {
-      cancelled = true;
-    };
   }, [initialFile, handleFileUpload]);
 
   useEffect(() => {
@@ -407,9 +404,7 @@ export default function ImageEditor({
           break;
         }
       }
-      if (!file && data.files?.[0]?.type.startsWith("image/")) {
-        file = data.files[0];
-      }
+      if (!file) file = pickFirstFile(data.files);
       if (!file) return;
       e.preventDefault();
       handleFileUpload(file);
@@ -430,25 +425,45 @@ export default function ImageEditor({
     return () => window.clearInterval(id);
   }, [loading]);
 
-  // Re-paint after result view unmounts canvases (e.g. Edit Again).
+  // Paint after canvases mount (first upload, or Edit Again).
   useEffect(() => {
     if (!image || resultUrl || !canvasSize.w) return;
-    const canvas = canvasRef.current;
-    const maskCanvas = maskCanvasRef.current;
-    if (!canvas || !maskCanvas) return;
+    let cancelled = false;
+    let tries = 0;
+    let raf = 0;
 
-    if (canvas.width !== canvasSize.w || canvas.height !== canvasSize.h) {
-      canvas.width = canvasSize.w;
-      canvas.height = canvasSize.h;
-      maskCanvas.width = canvasSize.w;
-      maskCanvas.height = canvasSize.h;
-    }
+    const paint = () => {
+      if (cancelled) return;
+      const canvas = canvasRef.current;
+      const maskCanvas = maskCanvasRef.current;
+      if (!canvas || !maskCanvas) {
+        if (tries++ < 8) {
+          raf = window.requestAnimationFrame(paint);
+          return;
+        }
+        toast.error("Could not open the editor canvas. Try uploading again.");
+        return;
+      }
 
-    const ctx = canvas.getContext("2d");
-    if (ctx) {
-      ctx.clearRect(0, 0, canvasSize.w, canvasSize.h);
-      ctx.drawImage(image, 0, 0, canvasSize.w, canvasSize.h);
-    }
+      if (canvas.width !== canvasSize.w || canvas.height !== canvasSize.h) {
+        canvas.width = canvasSize.w;
+        canvas.height = canvasSize.h;
+        maskCanvas.width = canvasSize.w;
+        maskCanvas.height = canvasSize.h;
+      }
+
+      const ctx = canvas.getContext("2d");
+      if (ctx) {
+        ctx.clearRect(0, 0, canvasSize.w, canvasSize.h);
+        ctx.drawImage(image, 0, 0, canvasSize.w, canvasSize.h);
+      }
+    };
+
+    paint();
+    return () => {
+      cancelled = true;
+      if (raf) window.cancelAnimationFrame(raf);
+    };
   }, [image, resultUrl, canvasSize.w, canvasSize.h]);
 
   useEffect(() => {
@@ -775,8 +790,12 @@ export default function ImageEditor({
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
       e.preventDefault();
-      const file = e.dataTransfer.files[0];
-      if (file) handleFileUpload(file);
+      const file = pickFirstFile(e.dataTransfer.files);
+      if (!file) {
+        toast.error("Drop a JPG, PNG, or WebP image.");
+        return;
+      }
+      handleFileUpload(file);
     },
     [handleFileUpload]
   );
@@ -1100,7 +1119,7 @@ export default function ImageEditor({
       {serviceAlert}
 
       <ol
-        className="mb-3 flex flex-wrap items-center justify-center gap-1.5 text-xs"
+        className="mb-3 flex flex-nowrap items-center justify-start gap-1.5 overflow-x-auto text-xs sm:justify-center"
         aria-label="Object remover steps"
       >
         {stepLabels.map((label, index) => {
@@ -1111,7 +1130,7 @@ export default function ImageEditor({
             <li
               key={label}
               className={cn(
-                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+                "inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1",
                 active && "bg-primary text-primary-foreground",
                 done && !active && "bg-success/10 text-success",
                 !active && !done && "bg-muted text-muted-foreground"
@@ -1160,7 +1179,7 @@ export default function ImageEditor({
             accept="image/jpeg,image/png,image/webp"
             className="sr-only"
             onChange={(e) => {
-              const file = e.target.files?.[0];
+              const file = pickFirstFile(e.target.files);
               if (file) handleFileUpload(file);
               e.target.value = "";
             }}

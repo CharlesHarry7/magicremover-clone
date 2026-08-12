@@ -3,6 +3,8 @@
 import { useCallback, useEffect, useId, useRef, useState } from "react";
 import { AlertCircleIcon, UploadIcon } from "lucide-react";
 
+import { toast } from "sonner";
+
 import ImageEditor from "./ImageEditor";
 import SafeImage from "@/components/SafeImage";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
@@ -21,6 +23,7 @@ import {
   SERVICE_UNAVAILABLE_ZH,
 } from "@/lib/remove-errors";
 import { FREE_EDITS, FREE_EDITS_STORY, remainingEditsLabel } from "@/lib/remove-limits";
+import { pickFirstFile } from "@/lib/image-file";
 
 const beforeAfterImages: Record<
   DemoTab,
@@ -274,8 +277,12 @@ export default function Hero() {
                     onDragOver={(e) => e.preventDefault()}
                     onDrop={(e) => {
                       e.preventDefault();
-                      const file = e.dataTransfer.files[0];
-                      if (file) openEditor(file);
+                      const file = pickFirstFile(e.dataTransfer.files);
+                      if (!file) {
+                        toast.error("Drop a JPG, PNG, or WebP image.");
+                        return;
+                      }
+                      openEditor(file);
                     }}
                     onClick={() => fileInputRef.current?.click()}
                     aria-label="Upload a photo to open the object remover"
@@ -297,7 +304,7 @@ export default function Hero() {
                     accept="image/jpeg,image/png,image/webp"
                     className="sr-only"
                     onChange={(e) => {
-                      const file = e.target.files?.[0];
+                      const file = pickFirstFile(e.target.files);
                       if (file) openEditor(file);
                       e.target.value = "";
                     }}
