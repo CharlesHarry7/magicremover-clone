@@ -37,6 +37,14 @@ if (/\bassetPrefix\b\s*:/.test(nextConfig) || /\bbasePath\b\s*:/.test(nextConfig
     "next.config.ts must NOT set assetPrefix/basePath. Live /_next/static 404s mean the Worker was published without `.open-next/assets` (fix wrangler assets + OpenNext deploy), not Next assetPrefix."
   );
 }
+if (
+  /\boutput\b\s*:\s*['"]export['"]/.test(nextConfig) ||
+  /\boutput\b\s*:\s*"export"/.test(nextConfig)
+) {
+  fail(
+    'next.config.ts must NOT set output: "export". Static export breaks OpenNext Workers SSR; deploy with opennextjs-cloudflare build + assets=.open-next/assets.'
+  );
+}
 
 const wranglerPath = path.join(root, "wrangler.jsonc");
 if (!existsSync(wranglerPath)) {
@@ -88,7 +96,7 @@ if (!Array.isArray(flags) || !flags.includes("nodejs_compat")) {
 }
 
 console.log("check-wrangler-opennext: OK");
-console.log('  next.config: no assetPrefix/basePath');
+console.log('  next.config: no assetPrefix/basePath/output:export');
 console.log('  wrangler: main=.open-next/worker.js');
 console.log('  wrangler: assets.directory=.open-next/assets binding=ASSETS');
 console.log("  deploy: npm run deploy | npm run upload  # Worker + ASSETS together");
