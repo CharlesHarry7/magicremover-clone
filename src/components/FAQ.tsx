@@ -7,6 +7,7 @@ import {
   AccordionTrigger,
 } from "@/components/ui/accordion";
 import { FREE_EDITS_STORY } from "@/lib/remove-limits";
+import { SERVICE_UNAVAILABLE_ZH } from "@/lib/remove-errors";
 
 const faqs = [
   {
@@ -34,7 +35,7 @@ const faqs = [
   {
     question: "What if removal is not configured?",
     answer:
-      "You’ll see a notice: 去物服务暂未开通，请稍后再试。 You can still upload a photo and try again later — we never show a fake success image.",
+      `You’ll see a notice: ${SERVICE_UNAVAILABLE_ZH}. You can still upload a photo and try again later — we never show a fake success image.`,
   },
   {
     question: "Can I remove people, watermarks, and text?",

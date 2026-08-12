@@ -8,6 +8,7 @@ import {
   POLL_INTERVAL_MS,
   RESULT_FETCH_TIMEOUT_MS,
 } from "@/lib/remove-limits";
+import { SERVICE_UNAVAILABLE_ZH } from "@/lib/remove-errors";
 
 /**
  * Object removal via Replicate (LaMa-based image-object-removal).
@@ -40,7 +41,7 @@ function missingKeyResponse() {
   );
   return NextResponse.json(
     {
-      error: "去物服务暂未开通，请稍后再试。",
+      error: SERVICE_UNAVAILABLE_ZH,
       code: "MISSING_API_KEY",
     },
     { status: 503 }
