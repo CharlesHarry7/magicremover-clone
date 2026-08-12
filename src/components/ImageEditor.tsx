@@ -20,8 +20,7 @@ import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
-  formatLightApiError,
-  isServiceUnavailable,
+  classifyRemoveFailure,
   sanitizeClientError,
   SERVICE_UNAVAILABLE_EN,
   SERVICE_UNAVAILABLE_ZH,
@@ -819,12 +818,22 @@ export default function ImageEditor({
       const data = await readRemoveApiPayload(res);
 
       if (!res.ok) {
-        if (isServiceUnavailable(res.status, data)) {
+        // Code / 503 first — never show raw data.error (it may name env vars).
+        if (
+          data.code === "MISSING_API_KEY" ||
+          res.status === 503
+        ) {
           setServiceUnavailable(true);
           onServiceUnavailable?.();
           return;
         }
-        toast.error(formatLightApiError(res.status, data));
+        const classified = classifyRemoveFailure(res.status, data);
+        if (classified.kind === "service") {
+          setServiceUnavailable(true);
+          onServiceUnavailable?.();
+          return;
+        }
+        toast.error(classified.message);
         return;
       }
 
@@ -854,7 +863,8 @@ export default function ImageEditor({
       } else {
         const message =
           err instanceof Error ? err.message : "Something went wrong";
-        if (isServiceUnavailable(0, { error: message })) {
+        const classified = classifyRemoveFailure(0, { error: message });
+        if (classified.kind === "service") {
           setServiceUnavailable(true);
           onServiceUnavailable?.();
         } else {

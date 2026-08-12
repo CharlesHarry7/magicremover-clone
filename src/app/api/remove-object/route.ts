@@ -8,7 +8,7 @@ import {
   POLL_INTERVAL_MS,
   RESULT_FETCH_TIMEOUT_MS,
 } from "@/lib/remove-limits";
-import { SERVICE_UNAVAILABLE_ZH } from "@/lib/remove-errors";
+import { SERVICE_UNAVAILABLE_API_ERROR } from "@/lib/remove-errors";
 
 /**
  * Object removal via Replicate (LaMa-based image-object-removal).
@@ -37,11 +37,11 @@ class ApiError extends Error {
 
 function missingKeyResponse() {
   console.error(
-    "MISSING_API_KEY: set REPLICATE_API_TOKEN in .env.local, .dev.vars, or wrangler secret, then restart/redeploy."
+    "MISSING_API_KEY: removal provider token is not set; configure it in the Worker secrets and redeploy."
   );
   return NextResponse.json(
     {
-      error: SERVICE_UNAVAILABLE_ZH,
+      error: SERVICE_UNAVAILABLE_API_ERROR,
       code: "MISSING_API_KEY",
     },
     { status: 503 }

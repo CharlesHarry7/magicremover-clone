@@ -3,26 +3,61 @@ export const SERVICE_UNAVAILABLE_ZH = "去物服务暂未开通，请稍后再�
 export const SERVICE_UNAVAILABLE_EN =
   "Object removal isn’t available right now. Please try again later.";
 
-const ENV_OR_SECRET =
-  /REPLICATE_[A-Z0-9_]*|process\.env|\.env\.local|\.dev\.vars|wrangler secret|MISSING_API_KEY/i;
+/** Neutral JSON `error` for missing-key 503 — never include env-var names. */
+export const SERVICE_UNAVAILABLE_API_ERROR = "Object removal is not available.";
+
+/** Leaked provider/env names that must never appear in the UI. */
+const SECRET_LEAK =
+  /REPLICATE|API_TOKEN|api token|\.env(?:\.local)?|\.dev\.vars|process\.env|wrangler secret/i;
+
+export function mentionsSecret(text: string | undefined): boolean {
+  return Boolean(text && SECRET_LEAK.test(text));
+}
+
+function isKnownLightFailure(
+  status: number,
+  code: string | undefined
+): boolean {
+  if (status === 429 || status === 413 || status === 504) return true;
+  return (
+    code === "PREDICTION_TIMEOUT" ||
+    code === "PAYLOAD_TOO_LARGE" ||
+    code === "REPLICATE_RATE_LIMIT"
+  );
+}
+
+/**
+ * Map a remove-API failure to UI copy.
+ * Order is required: `code === "MISSING_API_KEY"` / HTTP 503 first.
+ * Never return raw `data.error` when it names the provider token or env vars.
+ */
+export function classifyRemoveFailure(
+  status: number,
+  data: { error?: string; code?: string }
+): { kind: "service" | "light"; message: string } {
+  if (data.code === "MISSING_API_KEY" || status === 503) {
+    return { kind: "service", message: SERVICE_UNAVAILABLE_ZH };
+  }
+  if (isKnownLightFailure(status, data.code)) {
+    return { kind: "light", message: formatLightApiError(status, data) };
+  }
+  if (/not configured/i.test(data.error ?? "") || mentionsSecret(data.error)) {
+    return { kind: "service", message: SERVICE_UNAVAILABLE_ZH };
+  }
+  return { kind: "light", message: formatLightApiError(status, data) };
+}
 
 export function isServiceUnavailable(
   status: number,
   data: { error?: string; code?: string }
 ): boolean {
-  if (data.code === "MISSING_API_KEY") return true;
-  if (status === 503) return true;
-  const blob = `${data.error ?? ""} ${data.code ?? ""}`;
-  if (/not configured/i.test(blob)) return true;
-  if (/REPLICATE_API_TOKEN/i.test(blob)) return true;
-  return false;
+  return classifyRemoveFailure(status, data).kind === "service";
 }
 
 /** Strip credential / env-var / REPLICATE_* names from any message shown in the UI. */
 export function sanitizeClientError(message: string): string {
-  if (isServiceUnavailable(0, { error: message })) return SERVICE_UNAVAILABLE_ZH;
-  if (ENV_OR_SECRET.test(message)) {
-    return "Something went wrong. Please try again.";
+  if (mentionsSecret(message) || /not configured/i.test(message)) {
+    return SERVICE_UNAVAILABLE_ZH;
   }
   return message;
 }
@@ -31,7 +66,10 @@ export function formatLightApiError(
   status: number,
   data: { error?: string; code?: string }
 ): string {
-  if (isServiceUnavailable(status, data)) return SERVICE_UNAVAILABLE_ZH;
+  if (data.code === "MISSING_API_KEY" || status === 503) {
+    return SERVICE_UNAVAILABLE_ZH;
+  }
+
   const code = data.code;
   if (code === "PREDICTION_TIMEOUT" || status === 504) {
     return "Removal timed out on the Worker (~30s budget). Try a smaller image.";
@@ -49,6 +87,9 @@ export function formatLightApiError(
     code === "REPLICATE_POLL_ERROR"
   ) {
     return "Removal failed. Please try again.";
+  }
+  if (mentionsSecret(data.error)) {
+    return SERVICE_UNAVAILABLE_ZH;
   }
   if (data.error) return sanitizeClientError(data.error);
   return `Failed to process image (HTTP ${status})`;

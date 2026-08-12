@@ -1,8 +1,8 @@
 import type { MetadataRoute } from "next";
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ||
-  "http://localhost:3000";
+import { getSiteUrl } from "@/lib/site-url";
+
+const siteUrl = getSiteUrl();
 
 /** Homepage only — marketing stubs are `noindex`. */
 export default function sitemap(): MetadataRoute.Sitemap {
