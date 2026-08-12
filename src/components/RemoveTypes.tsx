@@ -85,7 +85,7 @@ export default function RemoveTypes() {
               href={item.href}
               className="group"
             >
-              <Card className="h-full transition-all hover:border-primary/30 hover:shadow-md">
+              <Card className="h-full transition-all hover:ring-primary/30 hover:shadow-md">
                 <CardContent className="p-6">
                   <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
                     {item.icon}
