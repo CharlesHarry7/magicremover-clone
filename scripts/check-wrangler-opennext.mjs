@@ -46,6 +46,55 @@ if (
   );
 }
 
+// 503 MISSING_API_KEY JSON must stay neutral (no REPLICATE_API_TOKEN in the body).
+const removeErrorsPath = path.join(root, "src/lib/remove-errors.ts");
+if (!existsSync(removeErrorsPath)) {
+  fail("missing src/lib/remove-errors.ts");
+}
+const removeErrors = readFileSync(removeErrorsPath, "utf8");
+if (
+  !/SERVICE_UNAVAILABLE_API_ERROR\s*=\s*"Object removal is not available\."/.test(
+    removeErrors
+  )
+) {
+  fail(
+    'SERVICE_UNAVAILABLE_API_ERROR must be the neutral string "Object removal is not available."'
+  );
+}
+const jsonBlock = removeErrors.match(
+  /export const MISSING_API_KEY_JSON\s*=\s*\{[\s\S]*?\}\s*as const/
+)?.[0];
+if (!jsonBlock) {
+  fail("MISSING_API_KEY_JSON export not found in remove-errors.ts");
+}
+if (/REPLICATE_API_TOKEN|REPLICATE_/i.test(jsonBlock)) {
+  fail(
+    "MISSING_API_KEY_JSON must not mention REPLICATE_* — keep { error: neutral, code: MISSING_API_KEY } only."
+  );
+}
+if (
+  !/code:\s*"MISSING_API_KEY"/.test(jsonBlock) ||
+  !/error:\s*SERVICE_UNAVAILABLE_API_ERROR/.test(jsonBlock)
+) {
+  fail(
+    "MISSING_API_KEY_JSON must be { error: SERVICE_UNAVAILABLE_API_ERROR, code: \"MISSING_API_KEY\" }."
+  );
+}
+
+const siteUrlPath = path.join(root, "src/lib/site-url.ts");
+if (!existsSync(siteUrlPath)) {
+  fail("missing src/lib/site-url.ts");
+}
+const siteUrlSrc = readFileSync(siteUrlPath, "utf8");
+if (!/magicremover-clone\.guochao950518\.workers\.dev/.test(siteUrlSrc)) {
+  fail(
+    "site-url.ts must default PRODUCTION_SITE_URL to the workers.dev QA host."
+  );
+}
+if (!/localhost|127\.0\.0\.1/.test(siteUrlSrc)) {
+  fail("site-url.ts must explicitly reject localhost for metadataBase.");
+}
+
 const wranglerPath = path.join(root, "wrangler.jsonc");
 if (!existsSync(wranglerPath)) {
   fail("missing wrangler.jsonc");

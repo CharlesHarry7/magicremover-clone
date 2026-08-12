@@ -53,7 +53,7 @@ npm run preview
 | Variable | Required | Description |
 | --- | --- | --- |
 | `REPLICATE_API_TOKEN` | Yes (for AI remove) | Without it, `/api/remove-object` returns **503** `{ code: "MISSING_API_KEY" }`. |
-| `NEXT_PUBLIC_SITE_URL` | No | Absolute origin for Open Graph / Twitter / canonical. Production fallback is the workers.dev URL, not localhost. |
+| `NEXT_PUBLIC_SITE_URL` or `SITE_URL` | No | Absolute origin for Open Graph / Twitter / canonical. Fallback: `https://magicremover-clone.guochao950518.workers.dev` (never localhost). |
 
 | Runtime | Where to set the token |
 | --- | --- |

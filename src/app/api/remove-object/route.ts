@@ -36,7 +36,8 @@ class ApiError extends Error {
 }
 
 function missingKeyResponse() {
-  // Server log only — never put env/provider names in the JSON body.
+  // JSON body is exactly MISSING_API_KEY_JSON (neutral error + code).
+  // Never put REPLICATE_API_TOKEN / env-var names in the response body.
   console.error(
     "MISSING_API_KEY: removal provider token is not set; configure Worker secrets and redeploy."
   );
