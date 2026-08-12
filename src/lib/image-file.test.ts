@@ -12,12 +12,14 @@ import { test } from "node:test";
 
 import { MAX_IMAGE_DIM, MAX_UPLOAD_BYTES, remainingEditsLabel } from "./remove-limits.ts";
 import {
+  createOncePerTurnDeliver,
   editorLoopStep,
   fileFromInputElement,
   fitCanvasSize,
   imageFileRejectReason,
   isAllowedImageFile,
   pickFirstFile,
+  takeAcceptedInputFile,
 } from "./image-file.ts";
 
 function makeFile(
@@ -129,6 +131,58 @@ test("fileFromInputElement only clears the input when a file is present", () => 
   assert.equal(empty.value, "pending");
 
   assert.equal(fileFromInputElement(null), null);
+});
+
+test("second consume of the same input is empty (dual change/input race)", () => {
+  const file = makeFile("ok.jpg", "image/jpeg");
+  const input = {
+    files: { 0: file, length: 1 } as unknown as FileList,
+    value: "C:\\fakepath\\ok.jpg",
+  };
+  const first = takeAcceptedInputFile(input as HTMLInputElement);
+  assert.deepEqual(first, { ok: true, file });
+  assert.equal(input.value, "");
+  // Simulate the second React/native handler after the first cleared value.
+  input.files = { length: 0 } as unknown as FileList;
+  assert.equal(takeAcceptedInputFile(input as HTMLInputElement), null);
+});
+
+test("takeAcceptedInputFile toasts-ready reject without calling through", () => {
+  const gif = makeFile("x.gif", "image/gif");
+  const input = {
+    files: { 0: gif, length: 1 } as unknown as FileList,
+    value: "C:\\fakepath\\x.gif",
+  };
+  assert.deepEqual(takeAcceptedInputFile(input as HTMLInputElement), {
+    ok: false,
+    error: "Please upload a JPG, PNG, or WebP image.",
+  });
+});
+
+test("createOncePerTurnDeliver ignores a second emit in the same turn", async () => {
+  const deliver = createOncePerTurnDeliver();
+  const seen: string[] = [];
+  assert.equal(
+    deliver("first", (v) => {
+      seen.push(v);
+    }),
+    true
+  );
+  assert.equal(
+    deliver("second", (v) => {
+      seen.push(v);
+    }),
+    false
+  );
+  assert.deepEqual(seen, ["first"]);
+  await Promise.resolve();
+  assert.equal(
+    deliver("third", (v) => {
+      seen.push(v);
+    }),
+    true
+  );
+  assert.deepEqual(seen, ["first", "third"]);
 });
 
 test("pickFirstFile reads index 0", () => {

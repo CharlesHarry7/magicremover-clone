@@ -1,11 +1,13 @@
 "use client";
 
-import { useEffect, type DragEvent, type RefObject } from "react";
+import { useCallback, useEffect, useRef, type DragEvent, type RefObject } from "react";
 import { Loader2Icon, UploadIcon } from "lucide-react";
 import { toast } from "sonner";
 
 import {
   IMAGE_FILE_ACCEPT,
+  acceptImageFile,
+  createOncePerTurnDeliver,
   dataTransferLooksLikeFiles,
   fileFromDataTransfer,
   fileFromInputElement,
@@ -32,8 +34,9 @@ function preventFileDrag(e: DragEvent | globalThis.DragEvent) {
 
 /**
  * Click / drop / CDP file-input target.
- * Not a button element — Chrome often never fires `drop` on buttons, which left
- * the editor stuck on “Upload a photo to start” with no toast.
+ * Single `change` path only — dual React+native change/input listeners raced:
+ * the first cleared `input.value`, the second saw empty files, and decode
+ * never committed image + canvasSize (UI stuck on “1 Upload”).
  */
 export default function PhotoDropzone({
   id,
@@ -44,21 +47,20 @@ export default function PhotoDropzone({
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
 }: PhotoDropzoneProps) {
-  useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    const onPicked = () => {
-      const file = fileFromInputElement(el);
-      if (!file) return;
-      onFile(file);
-    };
-    // `change` is the file-input event. Do not listen to `input` — some mobile
-    // browsers fire an empty `input` first; clearing then aborted the pick.
-    el.addEventListener("change", onPicked);
-    return () => {
-      el.removeEventListener("change", onPicked);
-    };
-  }, [inputRef, onFile]);
+  const deliverRef = useRef(createOncePerTurnDeliver());
+
+  const emitAccepted = useCallback(
+    (file: File | null) => {
+      const accepted = acceptImageFile(file);
+      if (!accepted) return;
+      if (!accepted.ok) {
+        toast.error(accepted.error);
+        return;
+      }
+      deliverRef.current(accepted.file, onFile);
+    },
+    [onFile]
+  );
 
   useEffect(() => {
     const onDragOver = (e: globalThis.DragEvent) => {
@@ -66,7 +68,10 @@ export default function PhotoDropzone({
       preventFileDrag(e);
     };
     const onDrop = (e: globalThis.DragEvent) => {
-      if (!dataTransferLooksLikeFiles(e.dataTransfer) && !fileFromDataTransfer(e.dataTransfer)) {
+      if (
+        !dataTransferLooksLikeFiles(e.dataTransfer) &&
+        !fileFromDataTransfer(e.dataTransfer)
+      ) {
         return;
       }
       preventFileDrag(e);
@@ -75,7 +80,7 @@ export default function PhotoDropzone({
         toast.error("Drop a JPG, PNG, or WebP image.");
         return;
       }
-      onFile(file);
+      emitAccepted(file);
     };
     window.addEventListener("dragover", onDragOver, true);
     window.addEventListener("drop", onDrop, true);
@@ -83,7 +88,7 @@ export default function PhotoDropzone({
       window.removeEventListener("dragover", onDragOver, true);
       window.removeEventListener("drop", onDrop, true);
     };
-  }, [onFile]);
+  }, [emitAccepted]);
 
   const onDrop = (e: DragEvent<HTMLLabelElement>) => {
     preventFileDrag(e);
@@ -92,7 +97,7 @@ export default function PhotoDropzone({
       toast.error("Drop a JPG, PNG, or WebP image.");
       return;
     }
-    onFile(file);
+    emitAccepted(file);
   };
 
   return (
@@ -117,9 +122,7 @@ export default function PhotoDropzone({
         disabled={busy}
         className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
         onChange={(e) => {
-          const file = fileFromInputElement(e.currentTarget);
-          if (!file) return;
-          onFile(file);
+          emitAccepted(fileFromInputElement(e.currentTarget));
         }}
       />
       <span className="pointer-events-none block">

@@ -54,6 +54,9 @@ export function dataTransferLooksLikeFiles(
  * Read then clear so the same file can be picked again.
  * Only clear when a file is present — an empty `input` event on some mobile
  * browsers would otherwise wipe a selection that `change` is about to deliver.
+ *
+ * One-shot: a second call on the same input returns null (the race that
+ * dual change/input listeners hit after the first handler cleared `value`).
  */
 export function fileFromInputElement(
   input: HTMLInputElement | null | undefined
@@ -62,6 +65,51 @@ export function fileFromInputElement(
   const file = pickFirstFile(input.files);
   if (file) input.value = "";
   return file;
+}
+
+export type AcceptedImageFile =
+  | { ok: true; file: File }
+  | { ok: false; error: string };
+
+/** Null when there is no file (picker cancel). Error when the file is the wrong type/size. */
+export function acceptImageFile(
+  file: File | null | undefined
+): AcceptedImageFile | null {
+  if (!file) return null;
+  const reason = imageFileRejectReason(file);
+  if (reason) return { ok: false, error: reason };
+  return { ok: true, file };
+}
+
+export function takeAcceptedInputFile(
+  input: HTMLInputElement | null | undefined
+): AcceptedImageFile | null {
+  return acceptImageFile(fileFromInputElement(input));
+}
+
+/**
+ * Drop/pick can hit two listeners in one turn (React + native, or window +
+ * label drop). Only the first emit runs; later calls in the same turn no-op
+ * so handleFileUpload is not double-started (gen++ would cancel the first
+ * decode and can leave canvasSize 0).
+ */
+export function createOncePerTurnDeliver(): <T>(
+  value: T,
+  emit: (value: T) => void
+) => boolean {
+  let busy = false;
+  return (value, emit) => {
+    if (busy) return false;
+    busy = true;
+    try {
+      emit(value);
+      return true;
+    } finally {
+      queueMicrotask(() => {
+        busy = false;
+      });
+    }
+  };
 }
 
 export function imageFileRejectReason(file: File): string | null {
