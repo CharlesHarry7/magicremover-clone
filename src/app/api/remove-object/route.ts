@@ -8,7 +8,7 @@ import {
   POLL_INTERVAL_MS,
   RESULT_FETCH_TIMEOUT_MS,
 } from "@/lib/remove-limits";
-import { SERVICE_UNAVAILABLE_API_ERROR, mentionsSecret } from "@/lib/remove-errors";
+import { MISSING_API_KEY_JSON, mentionsSecret } from "@/lib/remove-errors";
 
 /**
  * Object removal via Replicate (LaMa-based image-object-removal).
@@ -40,14 +40,7 @@ function missingKeyResponse() {
   console.error(
     "MISSING_API_KEY: set REPLICATE_API_TOKEN in .env.local, .dev.vars, or wrangler secret, then restart/redeploy."
   );
-  return NextResponse.json(
-    {
-      // Neutral client-facing copy only (no REPLICATE_*/wrangler/env instructions).
-      error: SERVICE_UNAVAILABLE_API_ERROR,
-      code: "MISSING_API_KEY",
-    },
-    { status: 503 }
-  );
+  return NextResponse.json(MISSING_API_KEY_JSON, { status: 503 });
 }
 
 function clientSafeCode(code: string): string {
@@ -56,25 +49,9 @@ function clientSafeCode(code: string): string {
     : code;
 }
 
-function errorResponse(
-  status: number,
-  code: string,
-  error: string,
-  extras?: Record<string, unknown>
-) {
+function errorResponse(status: number, code: string, error: string) {
   if (code === "MISSING_API_KEY" || status === 503) {
-    // Force neutral fields last so extras cannot overwrite a secret-bearing error.
-    return NextResponse.json(
-      {
-<<<<<<< Updated upstream
-=======
-        ...extras,
->>>>>>> Stashed changes
-        error: SERVICE_UNAVAILABLE_API_ERROR,
-        code: "MISSING_API_KEY",
-      },
-      { status: 503 }
-    );
+    return missingKeyResponse();
   }
   const safeCode = clientSafeCode(code);
   const leaked = mentionsSecret(error) || mentionsSecret(code);
@@ -82,7 +59,7 @@ function errorResponse(
     ? "Removal failed. Please try again."
     : error;
   return NextResponse.json(
-    { ...extras, error: safeError, code: safeCode },
+    { error: safeError, code: safeCode },
     { status }
   );
 }

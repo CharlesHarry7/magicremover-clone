@@ -4,15 +4,17 @@ export const SERVICE_UNAVAILABLE_ZH = "去物服务暂未开通，请稍后再�
 export const SERVICE_UNAVAILABLE_EN =
   "Object removal isn’t available in this preview right now. You can still upload and brush a mask — try Remove again later.";
 
-<<<<<<< Updated upstream
-/** Neutral JSON `error` for missing-key 503 — never include env-var names. */
-=======
 /**
  * Neutral JSON `error` for missing-key 503.
  * MUST stay free of REPLICATE_*, env-var names, and wrangler secret instructions.
  */
->>>>>>> Stashed changes
 export const SERVICE_UNAVAILABLE_API_ERROR = "Object removal is not available.";
+
+/** Exact 503 JSON body — two fields only. Never spread extras into this object. */
+export const MISSING_API_KEY_JSON = {
+  error: SERVICE_UNAVAILABLE_API_ERROR,
+  code: "MISSING_API_KEY",
+} as const;
 
 /** Leaked provider/env names that must never appear in the UI. */
 const SECRET_LEAK =
