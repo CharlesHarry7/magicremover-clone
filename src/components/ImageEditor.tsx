@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef, useState, useCallback, useEffect } from "react";
+import { useRef, useState, useCallback, useEffect, useId } from "react";
 import Image from "next/image";
 import {
   AlertCircleIcon,
@@ -161,6 +161,10 @@ function BeforeAfterCompare({
     };
   }, [updateFromClientX]);
 
+  const nudge = useCallback((delta: number) => {
+    setPosition((prev) => Math.min(96, Math.max(4, prev + delta)));
+  }, []);
+
   return (
     <div
       ref={containerRef}
@@ -175,18 +179,19 @@ function BeforeAfterCompare({
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img
         src={afterUrl}
-        alt="After"
+        alt="After object removal"
         className="absolute inset-0 h-full w-full object-contain"
         draggable={false}
       />
       <div
         className="absolute inset-y-0 left-0 overflow-hidden"
         style={{ width: `${position}%` }}
+        aria-hidden="true"
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src={beforeUrl}
-          alt="Before"
+          alt=""
           className="absolute inset-y-0 left-0 h-full max-w-none object-contain"
           style={{ width: width || "100%" }}
           draggable={false}
@@ -210,23 +215,52 @@ function BeforeAfterCompare({
         <button
           type="button"
           data-compare-handle
-          aria-label="Drag to compare before and after"
-          className="absolute top-1/2 left-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize items-center justify-center rounded-full border border-border bg-background text-xs font-semibold shadow-md"
+          role="slider"
+          aria-label="Compare before and after"
+          aria-valuemin={4}
+          aria-valuemax={96}
+          aria-valuenow={Math.round(position)}
+          aria-valuetext={`${Math.round(position)} percent before, ${Math.round(100 - position)} percent after`}
+          className="absolute top-1/2 left-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize items-center justify-center rounded-full border border-border bg-background text-xs font-semibold shadow-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
           onPointerDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
             dragging.current = true;
+            (e.currentTarget as HTMLButtonElement).setPointerCapture?.(
+              e.pointerId
+            );
             updateFromClientX(e.clientX);
           }}
+          onKeyDown={(e) => {
+            if (e.key === "ArrowLeft" || e.key === "ArrowDown") {
+              e.preventDefault();
+              nudge(e.shiftKey ? -10 : -2);
+            } else if (e.key === "ArrowRight" || e.key === "ArrowUp") {
+              e.preventDefault();
+              nudge(e.shiftKey ? 10 : 2);
+            } else if (e.key === "Home") {
+              e.preventDefault();
+              setPosition(4);
+            } else if (e.key === "End") {
+              e.preventDefault();
+              setPosition(96);
+            }
+          }}
         >
-          ↔
+          <span aria-hidden="true">↔</span>
         </button>
       </div>
 
-      <Badge className="absolute left-2 top-2 z-20 bg-black/60 text-white hover:bg-black/60">
+      <Badge
+        aria-hidden="true"
+        className="absolute left-2 top-2 z-20 bg-black/60 text-white hover:bg-black/60"
+      >
         Before
       </Badge>
-      <Badge className="absolute right-2 top-2 z-20 bg-success/80 text-white hover:bg-success/80">
+      <Badge
+        aria-hidden="true"
+        className="absolute right-2 top-2 z-20 bg-success/80 text-white hover:bg-success/80"
+      >
         After
       </Badge>
     </div>
@@ -234,6 +268,8 @@ function BeforeAfterCompare({
 }
 
 export default function ImageEditor({ onResult, initialFile }: ImageEditorProps) {
+  const uploadInputId = useId();
+  const statusId = useId();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
@@ -907,17 +943,33 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       : brushSize;
 
   const errorBanner = error ? (
-    <Alert variant="destructive" className="mt-3">
+    <Alert variant="destructive" className="mt-3" role="alert">
       <AlertCircleIcon />
       <AlertDescription>{error}</AlertDescription>
     </Alert>
   ) : null;
 
+  const statusText = loading
+    ? "Removing objects. This usually takes 15 to 30 seconds."
+    : error
+      ? error
+      : resultUrl
+        ? "Removal finished. Compare before and after, then download."
+        : image
+          ? hasMask
+            ? "Mask ready. Press Remove Objects to continue."
+            : "Brush over the area you want to erase."
+          : "Upload a photo to start.";
+
   return (
-    <div id="editor" className="mx-auto max-w-4xl scroll-mt-24">
+    <div
+      id="editor"
+      className="mx-auto max-w-4xl scroll-mt-24"
+      aria-busy={loading || undefined}
+    >
       <div className="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
-          <EraserIcon className="size-3.5" />
+          <EraserIcon className="size-3.5" aria-hidden="true" />
           Brush the area to erase, then remove
         </span>
         <Badge
@@ -928,26 +980,40 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
         </Badge>
       </div>
 
+      <p id={statusId} className="sr-only" aria-live="polite">
+        {statusText}
+      </p>
+
       {!image ? (
-        <div
-          className="cursor-pointer rounded-xl border-2 border-dashed border-border p-12 text-center transition-colors hover:border-primary/50"
-          onDrop={handleDrop}
-          onDragOver={(e) => e.preventDefault()}
-          onClick={() => fileInputRef.current?.click()}
-        >
-          <UploadIcon className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
-          <p className="mb-1 text-sm font-medium">Drop a photo here</p>
-          <p className="text-xs text-muted-foreground">
-            or click to browse · JPG / PNG / WebP · up to ~10 MB
-          </p>
+        <div>
+          <button
+            type="button"
+            className="w-full cursor-pointer rounded-xl border-2 border-dashed border-border p-12 text-center transition-colors hover:border-primary/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+            onDrop={handleDrop}
+            onDragOver={(e) => e.preventDefault()}
+            onClick={() => fileInputRef.current?.click()}
+            aria-describedby={statusId}
+            aria-label="Upload a photo to remove objects"
+          >
+            <UploadIcon
+              className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40"
+              aria-hidden="true"
+            />
+            <p className="mb-1 text-sm font-medium">Drop a photo here</p>
+            <p className="text-xs text-muted-foreground">
+              or click to browse · JPG / PNG / WebP · up to ~10 MB
+            </p>
+          </button>
           <input
+            id={uploadInputId}
             ref={fileInputRef}
             type="file"
             accept="image/jpeg,image/png,image/webp"
-            className="hidden"
+            className="sr-only"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFileUpload(file);
+              e.target.value = "";
             }}
           />
           {errorBanner}
@@ -958,22 +1024,37 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             <ToggleGroup
               variant="outline"
               spacing={0}
+              aria-label="Before and after compare mode"
               value={[compareMode]}
               onValueChange={(group) => {
                 const next = group[0] as "side" | "slider" | undefined;
                 if (next) setCompareMode(next);
               }}
             >
-              <ToggleGroupItem value="slider" className="px-3">
+              <ToggleGroupItem
+                value="slider"
+                className="px-3"
+                aria-label="Slider compare"
+              >
                 Slider
               </ToggleGroupItem>
-              <ToggleGroupItem value="side" className="px-3">
+              <ToggleGroupItem
+                value="side"
+                className="px-3"
+                aria-label="Side by side compare"
+              >
                 Side by side
               </ToggleGroupItem>
             </ToggleGroup>
             <Button
               variant={showMaskOnBefore ? "secondary" : "outline"}
               size="sm"
+              aria-pressed={showMaskOnBefore}
+              aria-label={
+                showMaskOnBefore
+                  ? "Hide brush mask on before image"
+                  : "Show brush mask on before image"
+              }
               onClick={() => setShowMaskOnBefore((v) => !v)}
             >
               {showMaskOnBefore ? "Mask on" : "Mask off"}
@@ -994,10 +1075,10 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             </div>
           ) : (
             <div className="mb-4 flex flex-col gap-4 sm:flex-row">
-              <div className="relative flex-1 overflow-hidden rounded-xl bg-muted">
+              <figure className="relative flex-1 overflow-hidden rounded-xl bg-muted">
                 <Image
                   src={beforeUrl}
-                  alt="Before"
+                  alt="Original photo before object removal"
                   width={600}
                   height={450}
                   className="h-full w-full object-contain"
@@ -1006,30 +1087,36 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                 {showMaskOnBefore && maskPreviewUrl ? (
                   <Image
                     src={maskPreviewUrl}
-                    alt="Mask"
+                    alt=""
                     width={600}
                     height={450}
                     className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-50"
                     unoptimized
                   />
                 ) : null}
-                <Badge className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60">
+                <Badge
+                  aria-hidden="true"
+                  className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60"
+                >
                   Before
                 </Badge>
-              </div>
-              <div className="relative flex-1 overflow-hidden rounded-xl bg-muted">
+              </figure>
+              <figure className="relative flex-1 overflow-hidden rounded-xl bg-muted">
                 <Image
                   src={resultUrl}
-                  alt="After"
+                  alt="Photo after object removal"
                   width={600}
                   height={450}
                   className="h-full w-full object-contain"
                   unoptimized
                 />
-                <Badge className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80">
+                <Badge
+                  aria-hidden="true"
+                  className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80"
+                >
                   After
                 </Badge>
-              </div>
+              </figure>
             </div>
           )}
 
@@ -1102,6 +1189,9 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
         <div>
           <div
             ref={stageRef}
+            role="group"
+            aria-label="Brush mask editor"
+            aria-describedby={statusId}
             className={cn(
               "relative mx-auto mb-4 max-h-[70vh] max-w-full touch-none overflow-hidden overscroll-none rounded-xl bg-muted",
               loading && "pointer-events-none opacity-80"
@@ -1123,10 +1213,13 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             <canvas
               ref={canvasRef}
               className="absolute inset-0 h-full w-full touch-none"
+              aria-hidden="true"
             />
             <canvas
               ref={maskCanvasRef}
               className="absolute inset-0 h-full w-full touch-none"
+              role="img"
+              aria-label="Paint mask over areas to remove. Use Undo or Clear to adjust."
               style={{
                 cursor: "none",
                 touchAction: "none",
@@ -1140,6 +1233,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             />
             {cursorPos && !loading ? (
               <div
+                aria-hidden="true"
                 className="pointer-events-none absolute z-10 rounded-full border-2 border-red-500/80 bg-red-500/15 shadow-[0_0_0_1px_rgba(255,255,255,0.7)]"
                 style={{
                   width: Math.max(12, brushPreviewPx),
@@ -1151,8 +1245,15 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
               />
             ) : null}
             {loading ? (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-background/55 backdrop-blur-[1px]">
-                <Loader2Icon className="size-8 animate-spin text-primary" />
+              <div
+                className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-background/55 backdrop-blur-[1px]"
+                role="status"
+                aria-live="polite"
+              >
+                <Loader2Icon
+                  className="size-8 animate-spin text-primary"
+                  aria-hidden="true"
+                />
                 <p className="text-sm font-medium">Removing objects…</p>
                 <p className="px-4 text-center text-xs text-muted-foreground">
                   Usually 15–30s. Times out around 28s with a clear error.
@@ -1186,13 +1287,18 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                   {brushSize}px
                 </span>
               </div>
-              <div className="flex flex-wrap gap-1">
+              <div
+                className="flex flex-wrap gap-1"
+                role="group"
+                aria-label="Brush size presets"
+              >
                 {BRUSH_PRESETS.map((size) => (
                   <Button
                     key={size}
                     size="sm"
                     className="min-h-9"
                     variant={brushSize === size ? "secondary" : "outline"}
+                    aria-pressed={brushSize === size}
                     onClick={() => setBrushSize(size)}
                   >
                     {size === 12 ? "Fine" : size === 30 ? "Medium" : "Broad"}
@@ -1241,6 +1347,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             size="lg"
             onClick={handleRemoveObject}
             disabled={loading || dailyLeft <= 0 || !hasMask}
+            aria-describedby={statusId}
           >
             {loading ? (
               <>

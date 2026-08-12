@@ -53,6 +53,7 @@ npm run preview
 | Variable | Required | Description |
 | --- | --- | --- |
 | `REPLICATE_API_TOKEN` | Yes (for AI remove) | Without it, `/api/remove-object` returns **503** `{ code: "MISSING_API_KEY" }`. |
+| `NEXT_PUBLIC_SITE_URL` | No | Absolute origin for Open Graph / Twitter / canonical metadata. Defaults to `http://localhost:3000`. |
 
 | Runtime | Where to set the token |
 | --- | --- |
