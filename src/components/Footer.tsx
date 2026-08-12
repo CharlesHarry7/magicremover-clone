@@ -3,36 +3,12 @@ import Link from "next/link";
 import HashNavLink from "@/components/HashNavLink";
 import SafeImage from "@/components/SafeImage";
 import { Separator } from "@/components/ui/separator";
-import { hrefForDemoTab } from "@/lib/demo-tabs";
+import {
+  FOOTER_COMPANY,
+  FOOTER_GUIDES,
+  FOOTER_TOOLS,
+} from "@/lib/site-links";
 import { FREE_EDITS_STORY } from "@/lib/remove-limits";
-
-const allTools = [
-  { label: "Remove People from Photo", href: hrefForDemoTab("People") },
-  { label: "Remove Watermark from Photo", href: hrefForDemoTab("Watermark") },
-  { label: "Remove Object from Photo", href: hrefForDemoTab("Object") },
-  { label: "Remove Sticker from Image", href: hrefForDemoTab("Sticker") },
-  { label: "Remove Text from Image", href: hrefForDemoTab("Text") },
-  { label: "Remove Gemini Watermark", href: hrefForDemoTab("Watermark") },
-  { label: "Logo Remover", href: hrefForDemoTab("Sticker") },
-  { label: "Magic Eraser", href: hrefForDemoTab("Object") },
-  { label: "AI Image Generator", href: "/ai-image-generator" },
-  { label: "Edit Text", href: hrefForDemoTab("Text") },
-];
-
-const guides = [
-  { label: "Blog", href: "/blog" },
-  {
-    label: "How to Remove People from a Photo",
-    href: "/blog/how-to-remove-people-from-a-photo",
-  },
-];
-
-const company = [
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms of Service", href: "/terms" },
-];
 
 export default function Footer() {
   return (
@@ -42,7 +18,7 @@ export default function Footer() {
           <div>
             <h4 className="mb-3 text-sm font-semibold">All tools</h4>
             <ul className="space-y-1.5">
-              {allTools.map((link) => (
+              {FOOTER_TOOLS.map((link) => (
                 <li key={link.label}>
                   <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>
@@ -53,7 +29,7 @@ export default function Footer() {
           <div>
             <h4 className="mb-3 text-sm font-semibold">Guides</h4>
             <ul className="space-y-1.5">
-              {guides.map((link) => (
+              {FOOTER_GUIDES.map((link) => (
                 <li key={link.label}>
                   <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>
@@ -64,7 +40,7 @@ export default function Footer() {
           <div>
             <h4 className="mb-3 text-sm font-semibold">Company</h4>
             <ul className="space-y-1.5">
-              {company.map((link) => (
+              {FOOTER_COMPANY.map((link) => (
                 <li key={link.label}>
                   <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>

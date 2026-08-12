@@ -44,6 +44,12 @@ interface ImageEditorProps {
 const MAX_UNDO = 40;
 const BRUSH_PRESETS = [12, 30, 50] as const;
 
+/** Stacked before/after on narrow viewports so the result doesn’t sit in a cramped slider. */
+function preferStackedCompare(): boolean {
+  if (typeof window === "undefined") return false;
+  return window.matchMedia("(max-width: 640px)").matches;
+}
+
 async function readRemoveApiPayload(res: Response): Promise<{
   error?: string;
   code?: string;
@@ -145,7 +151,7 @@ function BeforeAfterCompare({
   return (
     <div
       ref={containerRef}
-      className="relative mx-auto aspect-[4/3] w-full max-w-[800px] touch-none overflow-hidden rounded-xl bg-muted select-none"
+      className="relative mx-auto aspect-[4/3] w-full max-h-[min(50vh,360px)] max-w-[800px] touch-none overflow-hidden rounded-xl bg-muted select-none sm:max-h-none"
       onPointerDown={(e) => {
         if ((e.target as HTMLElement).closest("[data-compare-handle]")) return;
         e.preventDefault();
@@ -198,7 +204,7 @@ function BeforeAfterCompare({
           aria-valuemax={96}
           aria-valuenow={Math.round(position)}
           aria-valuetext={`${Math.round(position)} percent before, ${Math.round(100 - position)} percent after`}
-          className="absolute top-1/2 left-1/2 flex size-9 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize items-center justify-center rounded-full border border-border bg-background text-xs font-semibold shadow-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
+          className="absolute top-1/2 left-1/2 flex size-12 min-h-12 min-w-12 -translate-x-1/2 -translate-y-1/2 cursor-ew-resize touch-manipulation items-center justify-center rounded-full border border-border bg-background text-xs font-semibold shadow-md focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none sm:size-11 sm:min-h-11 sm:min-w-11"
           onPointerDown={(e) => {
             e.preventDefault();
             e.stopPropagation();
@@ -828,9 +834,7 @@ export default function ImageEditor({
       }
 
       setResultUrl(data.result);
-      setCompareMode(
-        window.matchMedia?.("(pointer: coarse)").matches ? "side" : "slider"
-      );
+      setCompareMode(preferStackedCompare() ? "side" : "slider");
       setSessionLeft((prev) => prev - 1);
       window.setTimeout(() => {
         actionsRef.current?.scrollIntoView({
@@ -1219,8 +1223,8 @@ export default function ImageEditor({
               </figure>
             </div>
           ) : (
-            <div className="mb-4 flex flex-col gap-4 sm:flex-row">
-              <figure className="relative flex-1 overflow-hidden rounded-xl bg-muted">
+            <div className="mb-4 flex flex-col gap-4 md:flex-row">
+              <figure className="relative max-h-[min(45vh,320px)] flex-1 overflow-hidden rounded-xl bg-muted md:max-h-none">
                 <Image
                   src={beforeUrl}
                   alt="Original photo before object removal"
@@ -1246,7 +1250,7 @@ export default function ImageEditor({
                   Before
                 </Badge>
               </figure>
-              <figure className="relative flex-1 overflow-hidden rounded-xl bg-muted">
+              <figure className="relative max-h-[min(45vh,320px)] flex-1 overflow-hidden rounded-xl bg-muted md:max-h-none">
                 <Image
                   src={resultUrl}
                   alt="Photo after object removal — long-press to save on mobile"
@@ -1349,7 +1353,7 @@ export default function ImageEditor({
             aria-label="Brush mask editor"
             aria-describedby={statusId}
             className={cn(
-              "relative mx-auto mb-4 max-h-[70vh] max-w-full touch-none overflow-hidden overscroll-none rounded-xl bg-muted",
+              "relative mx-auto mb-4 max-h-[min(60vh,420px)] w-full max-w-full touch-none overflow-hidden overscroll-none rounded-xl bg-muted sm:max-h-[70vh]",
               loading && "pointer-events-none opacity-80"
             )}
             style={

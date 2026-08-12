@@ -16,13 +16,7 @@ import {
   SheetTrigger,
 } from "@/components/ui/sheet";
 import { handleSamePageHashNav } from "@/lib/scroll-to-id";
-import { hrefForDemoTab } from "@/lib/demo-tabs";
-
-const navLinks = [
-  { href: "/#try", label: "Object Remover" },
-  { href: hrefForDemoTab("Text"), label: "Remove Text" },
-  { href: "/ai-image-generator", label: "AI Image Generator" },
-];
+import { NAV_LINKS } from "@/lib/site-links";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -51,7 +45,7 @@ export default function Navbar() {
         </Link>
 
         <div className="hidden items-center gap-1 lg:flex">
-          {navLinks.map((link) => (
+          {NAV_LINKS.map((link) => (
             <Button
               key={link.label}
               variant="ghost"
@@ -109,7 +103,7 @@ export default function Navbar() {
             </SheetHeader>
             <Separator />
             <div className="flex flex-col gap-1 px-2">
-              {navLinks.map((link) => (
+              {NAV_LINKS.map((link) => (
                 <Button
                   key={link.label}
                   variant="ghost"
