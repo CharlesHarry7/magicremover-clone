@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import Image, { type ImageProps } from "next/image";
 import { ImageOffIcon } from "lucide-react";
 
@@ -24,10 +24,12 @@ export default function SafeImage({
   const [status, setStatus] = useState<"loading" | "ready" | "error">(
     "loading"
   );
+  const [activeSrc, setActiveSrc] = useState(src);
 
-  useEffect(() => {
+  if (src !== activeSrc) {
+    setActiveSrc(src);
     setStatus("loading");
-  }, [src]);
+  }
 
   if (status === "error") {
     return (
