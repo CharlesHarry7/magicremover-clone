@@ -71,15 +71,15 @@ Worker binding typings live in slim `cloudflare-env.d.ts`. Regenerate a full dum
 | `npm run build` | Production Next.js build |
 | `npm run lint` | ESLint (flat config; `eslint-config-next@16` for flat exports while the app stays on Next 15) |
 | `npm run typecheck` | TypeScript (`tsc --noEmit`) |
-| CI | `lint` → `typecheck` → `check:wrangler` → `build` → `build:worker` → `check:assets` |
+| CI | `lint` → `typecheck` → `check:wrangler` → patch self-test → `build` → `build:worker` → `check:assets` |
 | `npm run check:wrangler` | Fail if `assetPrefix`/`basePath` appear, or wrangler lacks OpenNext `main` + `ASSETS` |
-| `npm run build:worker` | OpenNext Cloudflare build (Worker + ASSETS) |
+| `npm run build:worker` | OpenNext Cloudflare build (Worker + ASSETS) + `/_next/static` hard-404 patch |
 | `npm run check:assets` | Fail if built HTML refs / public cases are missing from `.open-next/assets` |
 | `npm run preview` | OpenNext build + asset gate + local Workers preview |
 | `npm run deploy` | OpenNext build + asset gate + Workers deploy (ASSETS included) |
 | `npm run upload` | OpenNext build + asset gate + versions upload (no promote) |
 | `npm run deploy:preview` | Versions upload with `--preview-alias preview` |
-| `npm run smoke:deployed -- <url>` | Curl-check CSS/JS/media/cases on a live preview URL |
+| `npm run smoke:deployed -- <url>` | Curl-check CSS/JS/media/cases **200** and a known-missing hashed chunk **404** non-HTML |
 | `npm run cf-typegen` | Regenerate Worker env types |
 
 ## QA preview (do not merge to “fix” production)
@@ -100,7 +100,7 @@ OpenNext on Workers needs **one** publish that includes:
 When live `*.pages.dev` (or a partial Worker) serves HTML/SSR **without** uploading `.open-next/assets`, every `/_next/static/*` **404**s and the page never hydrates. Other broken edges:
 
 - `/` → **empty 404** with `_headers` (ASSETS answering; Worker not bound)
-- Mixed static **200**/**404** (stale/partial ASSETS vs current HTML hashes)
+- Mixed static **200**/**404** (stale/partial ASSETS vs current HTML hashes). Stale `/_next/static/*` hashes must **hard-404 as non-HTML** (not a Next HTML shell), or old cached pages execute HTML as JS.
 
 Fix: `npm run deploy` / `npm run upload` (OpenNext build + ASSETS together). Unbind legacy Pages git/`pages deploy` if it still owns `*.pages.dev`.
 
@@ -118,7 +118,7 @@ Fix: `npm run deploy` / `npm run upload` (OpenNext build + ASSETS together). Unb
 | Local Workers QA | `npm run preview` | OpenNext build + `check:assets` + Wrangler; default `http://127.0.0.1:8787` |
 | Optional public tunnel | after preview: `cloudflared tunnel --url http://127.0.0.1:8787` | When you need the **PR tip** locally without CF auth |
 | Non-prod Workers version | `npm run upload` or `npm run deploy:preview` | Needs `CLOUDFLARE_API_TOKEN` / `wrangler login`; **does not promote** production |
-| Smoke CSS/cases/home | `npm run smoke:deployed -- <preview-url>` | Fails if home/CSS/cases are not **200** |
+| Smoke CSS/cases/home | `npm run smoke:deployed -- <preview-url>` | Present assets **200**; fake `page-deadbeefdeadbeef.js` **404** non-HTML |
 
 ```bash
 npm ci
@@ -147,7 +147,7 @@ npx wrangler secret put REPLICATE_API_TOKEN
 
 | Command | What it does |
 | --- | --- |
-| `npm run build:worker` | `opennextjs-cloudflare build` → `.open-next/worker.js` + `.open-next/assets` |
+| `npm run build:worker` | `opennextjs-cloudflare build` → `.open-next/worker.js` + `.open-next/assets`, then patch Worker so `/_next/static/*` ASSETS misses hard-404 as `text/plain` |
 | `npm run check:assets` | Fails if `/_next/static` or `/cases/*` are missing from `.open-next/assets` |
 | `npm run deploy` | Build + asset gate + **Workers deploy** (uploads Worker **and** ASSETS) |
 | `npm run upload` | Build + asset gate + `wrangler versions upload` (non-promoting preview version) |

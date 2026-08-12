@@ -21,7 +21,10 @@ jobs:
       - run: npm run typecheck
       # Guard: no assetPrefix/basePath; wrangler main + assets.directory + ASSETS binding.
       - run: npm run check:wrangler
+      # Durable /_next/static ASSETS-miss hard-404 patcher (fixture, no OpenNext output).
+      - run: node scripts/patch-opennext-static-404.mjs --self-test
       - run: npm run build
       # OpenNext ASSETS gate: catches HTML-200 / static-404 deploy breakage before upload.
+      # build:worker also patches worker.js so missing hashed chunks hard-404 as text/plain.
       - run: npm run build:worker
       - run: npm run check:assets

@@ -5,6 +5,7 @@
  * Verifies:
  * 1) `.open-next/assets` exists and contains `_next/static` + public cases/logo
  * 2) Every `/_next/static/*` path referenced by built HTML (Next + OpenNext) exists on disk under ASSETS
+ * 3) `.open-next/worker.js` has the post-build `/_next/static` hard-404 guard
  *
  * Usage: node scripts/check-opennext-assets.mjs
  * Optional: OPEN_NEXT_ASSETS=.open-next/assets
@@ -123,12 +124,30 @@ if (missingRefs.length > 0) {
   );
 }
 
+const workerPath = path.join(root, ".open-next", "worker.js");
+if (!existsSync(workerPath)) {
+  fail(
+    "missing .open-next/worker.js. Run `npm run build:worker` (opennextjs-cloudflare build + static-404 patch)."
+  );
+}
+const workerSrc = readFileSync(workerPath, "utf8");
+if (
+  !workerSrc.includes("OPENNEXT_STATIC_ASSET_HARD_404_BEGIN") ||
+  !workerSrc.includes('startsWith("/_next/static/")') ||
+  !workerSrc.includes("text/plain")
+) {
+  fail(
+    "worker.js is missing the /_next/static hard-404 guard. `npm run build:worker` must run scripts/patch-opennext-static-404.mjs after opennextjs-cloudflare build so ASSETS misses return 404 text/plain, not Next HTML."
+  );
+}
+
 const rel = (p) => path.relative(root, p);
 console.log("check-opennext-assets: OK");
 console.log(`  assets: ${rel(assetsDir)}`);
 console.log(`  css: ${cssFiles.length}, js chunks: ${jsFiles.length}, media: ${mediaFiles.length}`);
 console.log(`  html files scanned: ${htmlFiles.length}, static refs verified: ${referenced.size}`);
 console.log(`  public cases/logo/_headers: present`);
+console.log("  worker.js: /_next/static ASSETS-miss hard-404 guard present");
 console.log(
   "  deploy with: npm run deploy   # opennextjs-cloudflare build + ASSETS upload"
 );
