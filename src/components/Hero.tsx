@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useId, useRef, useState } from "react";
-import { AlertCircleIcon, UploadIcon } from "lucide-react";
+import { AlertCircleIcon } from "lucide-react";
 
 import { toast } from "sonner";
 
@@ -23,7 +23,11 @@ import {
   SERVICE_UNAVAILABLE_ZH,
 } from "@/lib/remove-errors";
 import { FREE_EDITS, FREE_EDITS_STORY, remainingEditsLabel } from "@/lib/remove-limits";
-import { pickFirstFile } from "@/lib/image-file";
+import {
+  fileFromDataTransfer,
+  imageFileRejectReason,
+} from "@/lib/image-file";
+import PhotoDropzone from "@/components/PhotoDropzone";
 
 const beforeAfterImages: Record<
   DemoTab,
@@ -56,16 +60,14 @@ const beforeAfterImages: Record<
   },
 };
 
-function fileFromClipboard(data: DataTransfer | null): File | null {
-  if (!data) return null;
-  for (const item of Array.from(data.items)) {
-    if (item.kind === "file" && item.type.startsWith("image/")) {
-      return item.getAsFile();
-    }
+function acceptEditorFile(file: File | null): file is File {
+  if (!file) return false;
+  const reason = imageFileRejectReason(file);
+  if (reason) {
+    toast.error(reason);
+    return false;
   }
-  const file = data.files?.[0];
-  if (file?.type.startsWith("image/")) return file;
-  return null;
+  return true;
 }
 
 export default function Hero() {
@@ -96,6 +98,14 @@ export default function Hero() {
     });
   }, []);
 
+  const openEditorWithFile = useCallback(
+    (file: File) => {
+      if (!acceptEditorFile(file)) return;
+      openEditor(file);
+    },
+    [openEditor]
+  );
+
   useEffect(() => {
     const applyTabFromUrl = () => {
       const params = new URLSearchParams(window.location.search);
@@ -114,14 +124,14 @@ export default function Hero() {
   useEffect(() => {
     const onPaste = (e: ClipboardEvent) => {
       if (mode !== "demo") return;
-      const file = fileFromClipboard(e.clipboardData);
+      const file = fileFromDataTransfer(e.clipboardData);
       if (!file) return;
       e.preventDefault();
-      openEditor(file);
+      openEditorWithFile(file);
     };
     window.addEventListener("paste", onPaste);
     return () => window.removeEventListener("paste", onPaste);
-  }, [mode, openEditor]);
+  }, [mode, openEditorWithFile]);
 
   return (
     <section
@@ -275,43 +285,13 @@ export default function Hero() {
                       Upload your photo
                     </label>
                   </div>
-                  <button
-                    type="button"
-                    className="w-full cursor-pointer rounded-xl border-2 border-dashed border-border p-8 text-center transition-colors hover:border-primary/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-                    onDragOver={(e) => e.preventDefault()}
-                    onDrop={(e) => {
-                      e.preventDefault();
-                      const file = pickFirstFile(e.dataTransfer.files);
-                      if (!file) {
-                        toast.error("Drop a JPG, PNG, or WebP image.");
-                        return;
-                      }
-                      openEditor(file);
-                    }}
-                    onClick={() => fileInputRef.current?.click()}
+                  <PhotoDropzone
+                    id={fileInputId}
+                    inputRef={fileInputRef}
+                    onFile={openEditorWithFile}
+                    size="hero"
                     aria-label="Upload a photo to open the object remover"
                     aria-describedby={statusId}
-                  >
-                    <UploadIcon
-                      className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40"
-                      aria-hidden="true"
-                    />
-                    <p className="mb-1 text-sm font-medium">Drop a photo here</p>
-                    <p className="text-xs text-muted-foreground">
-                      or click / paste · JPG / PNG / WebP · up to ~10 MB
-                    </p>
-                  </button>
-                  <input
-                    id={fileInputId}
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    className="sr-only"
-                    onChange={(e) => {
-                      const file = pickFirstFile(e.target.files);
-                      if (file) openEditor(file);
-                      e.target.value = "";
-                    }}
                   />
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <Badge

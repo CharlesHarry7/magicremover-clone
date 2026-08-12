@@ -9,7 +9,6 @@ import {
   ImagePlusIcon,
   Loader2Icon,
   RotateCcwIcon,
-  UploadIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -32,11 +31,14 @@ import {
   FREE_EDITS_STORY,
   remainingEditsLabel,
   MAX_IMAGE_DIM,
-  MAX_UPLOAD_BYTES,
   OVERALL_BUDGET_MS,
 } from "@/lib/remove-limits";
-import { isAllowedImageFile, pickFirstFile } from "@/lib/image-file";
+import {
+  fileFromDataTransfer,
+  imageFileRejectReason,
+} from "@/lib/image-file";
 import { cn } from "@/lib/utils";
+import PhotoDropzone from "@/components/PhotoDropzone";
 
 interface ImageEditorProps {
   initialFile?: File | null;
@@ -318,16 +320,9 @@ export default function ImageEditor({
   }, []);
 
   const handleFileUpload = useCallback((file: File) => {
-    if (!isAllowedImageFile(file)) {
-      toast.error("Please upload a JPG, PNG, or WebP image.");
-      return;
-    }
-    if (file.size <= 0) {
-      toast.error("That file looks empty. Try another image.");
-      return;
-    }
-    if (file.size > MAX_UPLOAD_BYTES) {
-      toast.error("File size must be under 10 MB.");
+    const reason = imageFileRejectReason(file);
+    if (reason) {
+      toast.error(reason);
       return;
     }
 
@@ -396,16 +391,7 @@ export default function ImageEditor({
   useEffect(() => {
     if (image) return;
     const onPaste = (e: ClipboardEvent) => {
-      const data = e.clipboardData;
-      if (!data) return;
-      let file: File | null = null;
-      for (const item of Array.from(data.items)) {
-        if (item.kind === "file" && item.type.startsWith("image/")) {
-          file = item.getAsFile();
-          break;
-        }
-      }
-      if (!file) file = pickFirstFile(data.files);
+      const file = fileFromDataTransfer(e.clipboardData);
       if (!file) return;
       e.preventDefault();
       handleFileUpload(file);
@@ -788,19 +774,6 @@ export default function ImageEditor({
     return out.toDataURL("image/png");
   }, []);
 
-  const handleDrop = useCallback(
-    (e: React.DragEvent) => {
-      e.preventDefault();
-      const file = pickFirstFile(e.dataTransfer.files);
-      if (!file) {
-        toast.error("Drop a JPG, PNG, or WebP image.");
-        return;
-      }
-      handleFileUpload(file);
-    },
-    [handleFileUpload]
-  );
-
   const handleRemoveObject = useCallback(async () => {
     const canvas = canvasRef.current;
     if (!canvas || !image) return;
@@ -1162,38 +1135,14 @@ export default function ImageEditor({
       </p>
 
       {!image ? (
-        <div>
-          <button
-            type="button"
-            className="w-full cursor-pointer rounded-xl border-2 border-dashed border-border p-12 text-center transition-colors hover:border-primary/50 focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 focus-visible:outline-none"
-            onDrop={handleDrop}
-            onDragOver={(e) => e.preventDefault()}
-            onClick={() => fileInputRef.current?.click()}
-            aria-describedby={statusId}
-            aria-label="Upload a photo to remove objects"
-          >
-            <UploadIcon
-              className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40"
-              aria-hidden="true"
-            />
-            <p className="mb-1 text-sm font-medium">Drop a photo here</p>
-            <p className="text-xs text-muted-foreground">
-              or click / paste · JPG / PNG / WebP · up to ~10 MB
-            </p>
-          </button>
-          <input
-            id={uploadInputId}
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp"
-            className="sr-only"
-            onChange={(e) => {
-              const file = pickFirstFile(e.target.files);
-              if (file) handleFileUpload(file);
-              e.target.value = "";
-            }}
-          />
-        </div>
+        <PhotoDropzone
+          id={uploadInputId}
+          inputRef={fileInputRef}
+          onFile={handleFileUpload}
+          size="editor"
+          aria-describedby={statusId}
+          aria-label="Upload a photo to remove objects"
+        />
       ) : resultUrl ? (
         <div>
           <Tabs
