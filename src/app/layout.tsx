@@ -18,6 +18,7 @@ const geistMono = Geist_Mono({
   subsets: ["latin"],
 });
 
+/** QA/prod origin — workers.dev fallback; never localhost (see `getSiteUrl`). */
 const siteUrl = getSiteUrl() || PRODUCTION_SITE_URL;
 
 const title =
@@ -26,7 +27,11 @@ const description =
   "Erase unwanted objects, people, text, or watermarks from photos. Upload, brush a mask, run AI remove, compare before/after, and download. Free session demo — no signup.";
 
 export const metadata: Metadata = {
+  // Absolute base for canonical / og:url / og:image — must not be localhost:3000.
   metadataBase: new URL(siteUrl),
+  alternates: {
+    canonical: "/",
+  },
   title: {
     default: title,
     template: "%s | MagicRemover",
@@ -46,6 +51,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     locale: "en_US",
+    // Absolute via metadataBase → https://magicremover-clone.…workers.dev/
     url: "/",
     siteName: "MagicRemover",
     title,

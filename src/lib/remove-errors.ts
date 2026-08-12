@@ -24,6 +24,34 @@ export function mentionsSecret(text: string | undefined): boolean {
   return Boolean(text && SECRET_LEAK.test(text));
 }
 
+/** Alert title + description for missing remove service (ZH then EN). */
+export function serviceUnavailableUi(): {
+  title: string;
+  description: string;
+} {
+  return {
+    title: SERVICE_UNAVAILABLE_ZH,
+    description: SERVICE_UNAVAILABLE_EN,
+  };
+}
+
+function looksLikeMissingProvider(
+  status: number,
+  data: { error?: string; code?: string }
+): boolean {
+  if (data.code === "MISSING_API_KEY" || status === 503) return true;
+  if (data.code === "REPLICATE_AUTH" || data.code === "PROVIDER_AUTH") {
+    // Auth failures from a missing/invalid token — same human copy, no token names.
+    if (mentionsSecret(data.error) || /not configured|missing|unauthorized/i.test(data.error ?? "")) {
+      return true;
+    }
+  }
+  if (/not configured/i.test(data.error ?? "") || mentionsSecret(data.error)) {
+    return true;
+  }
+  return false;
+}
+
 function isKnownLightFailure(
   status: number,
   code: string | undefined
@@ -39,21 +67,20 @@ function isKnownLightFailure(
 
 /**
  * Map a remove-API failure to UI copy.
- * Order is required: `code === "MISSING_API_KEY"` / HTTP 503 first.
- * Never return raw `data.error` when it names the provider token or env vars.
+ * Order is required:
+ * 1) `code === "MISSING_API_KEY"` / HTTP 503 / REPLICATE-missing dumps → service ZH
+ * 2) known light failures → toast-friendly EN
+ * Never toast or render raw `data.error` first (it may name REPLICATE_* / env vars).
  */
 export function classifyRemoveFailure(
   status: number,
   data: { error?: string; code?: string }
 ): { kind: "service" | "light"; message: string } {
-  if (data.code === "MISSING_API_KEY" || status === 503) {
+  if (looksLikeMissingProvider(status, data)) {
     return { kind: "service", message: SERVICE_UNAVAILABLE_ZH };
   }
   if (isKnownLightFailure(status, data.code)) {
     return { kind: "light", message: formatLightApiError(status, data) };
-  }
-  if (/not configured/i.test(data.error ?? "") || mentionsSecret(data.error)) {
-    return { kind: "service", message: SERVICE_UNAVAILABLE_ZH };
   }
   return { kind: "light", message: formatLightApiError(status, data) };
 }
@@ -77,7 +104,8 @@ export function formatLightApiError(
   status: number,
   data: { error?: string; code?: string }
 ): string {
-  if (data.code === "MISSING_API_KEY" || status === 503) {
+  // Always classify missing-key / secret dumps before any other branch.
+  if (looksLikeMissingProvider(status, data)) {
     return SERVICE_UNAVAILABLE_ZH;
   }
 
@@ -88,7 +116,11 @@ export function formatLightApiError(
   if (code === "PAYLOAD_TOO_LARGE" || status === 413) {
     return "That photo is too large for the Worker. Use a file under ~10 MB.";
   }
-  if (code === "REPLICATE_RATE_LIMIT" || code === "PROVIDER_RATE_LIMIT" || status === 429) {
+  if (
+    code === "REPLICATE_RATE_LIMIT" ||
+    code === "PROVIDER_RATE_LIMIT" ||
+    status === 429
+  ) {
     return "Removal provider is rate-limiting requests. Try again shortly.";
   }
   if (
@@ -103,9 +135,12 @@ export function formatLightApiError(
   ) {
     return "Removal failed. Please try again.";
   }
-  if (mentionsSecret(data.error)) {
+  // Do not surface raw data.error — it may name REPLICATE_* even when code is unset.
+  if (data.error && mentionsSecret(data.error)) {
     return SERVICE_UNAVAILABLE_ZH;
   }
-  if (data.error) return sanitizeClientError(data.error);
-  return `Failed to process image (HTTP ${status})`;
+  if (status > 0) {
+    return `Failed to process image (HTTP ${status})`;
+  }
+  return "Removal failed. Please try again.";
 }

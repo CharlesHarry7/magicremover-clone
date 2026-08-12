@@ -1,11 +1,15 @@
-/** Production / QA origin when NEXT_PUBLIC_SITE_URL is unset (never localhost). */
+/**
+ * Default absolute origin for canonical / Open Graph when env is unset.
+ * QA surface is workers.dev (pages.dev dual-track is unreliable for static).
+ * Never fall back to localhost:3000.
+ */
 export const PRODUCTION_SITE_URL =
   "https://magicremover-clone.guochao950518.workers.dev";
 
 /**
  * Absolute site origin for canonical / Open Graph / robots / sitemap.
  * Prefer NEXT_PUBLIC_SITE_URL (trailing slash stripped). Otherwise the
- * workers.dev QA host. Never localhost — including production builds.
+ * workers.dev QA host. Rejects localhost / 127.0.0.1 even if set in env.
  */
 export function getSiteUrl(): string {
   const fromEnv = process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, "") ?? "";

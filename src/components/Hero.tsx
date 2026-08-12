@@ -18,10 +18,7 @@ import {
   demoTabFromSlug,
   syncDemoTabInUrl,
 } from "@/lib/demo-tabs";
-import {
-  SERVICE_UNAVAILABLE_EN,
-  SERVICE_UNAVAILABLE_ZH,
-} from "@/lib/remove-errors";
+import { serviceUnavailableUi } from "@/lib/remove-errors";
 import { FREE_EDITS, FREE_EDITS_STORY, remainingEditsLabel } from "@/lib/remove-limits";
 import {
   fileFromDataTransfer,
@@ -133,6 +130,8 @@ export default function Hero() {
     return () => window.removeEventListener("paste", onPaste);
   }, [mode, openEditorWithFile]);
 
+  const serviceCopy = serviceUnavailableUi();
+
   return (
     <section
       id="try"
@@ -216,8 +215,8 @@ export default function Hero() {
             className="sticky top-[3.25rem] z-40 mx-auto mb-4 max-w-4xl"
           >
             <AlertCircleIcon />
-            <AlertTitle>{SERVICE_UNAVAILABLE_ZH}</AlertTitle>
-            <AlertDescription>{SERVICE_UNAVAILABLE_EN}</AlertDescription>
+            <AlertTitle>{serviceCopy.title}</AlertTitle>
+            <AlertDescription>{serviceCopy.description}</AlertDescription>
           </Alert>
         ) : null}
 

@@ -22,8 +22,8 @@ import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   classifyRemoveFailure,
   sanitizeClientError,
-  SERVICE_UNAVAILABLE_EN,
   SERVICE_UNAVAILABLE_ZH,
+  serviceUnavailableUi,
 } from "@/lib/remove-errors";
 import {
   CLIENT_ABORT_MS,
@@ -823,15 +823,7 @@ export default function ImageEditor({
       const data = await readRemoveApiPayload(res);
 
       if (!res.ok) {
-        // Code / 503 first — never show raw data.error (it may name env vars).
-        if (
-          data.code === "MISSING_API_KEY" ||
-          res.status === 503
-        ) {
-          setServiceUnavailable(true);
-          onServiceUnavailable?.();
-          return;
-        }
+        // Classify by code/503 first — never toast raw data.error (REPLICATE_* / env).
         const classified = classifyRemoveFailure(res.status, data);
         if (classified.kind === "service") {
           setServiceUnavailable(true);
@@ -1074,11 +1066,12 @@ export default function ImageEditor({
               : "Brush over the area you want to erase."
             : "Upload a photo to start.";
 
+  const serviceCopy = serviceUnavailableUi();
   const serviceAlert = serviceUnavailable ? (
     <Alert variant="destructive" className="mb-3">
       <AlertCircleIcon />
-      <AlertTitle>{SERVICE_UNAVAILABLE_ZH}</AlertTitle>
-      <AlertDescription>{SERVICE_UNAVAILABLE_EN}</AlertDescription>
+      <AlertTitle>{serviceCopy.title}</AlertTitle>
+      <AlertDescription>{serviceCopy.description}</AlertDescription>
     </Alert>
   ) : null;
 

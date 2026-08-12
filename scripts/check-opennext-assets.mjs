@@ -123,15 +123,35 @@ if (missingRefs.length > 0) {
   );
 }
 
+// Canonical / og must not bake localhost:3000 into production HTML.
+const localhostHits = [];
+for (const file of htmlFiles) {
+  const html = readFileSync(file, "utf8");
+  if (/localhost:3000|127\.0\.0\.1:3000/i.test(html)) {
+    localhostHits.push(path.relative(root, file));
+  }
+}
+if (localhostHits.length > 0) {
+  fail(
+    `built HTML contains localhost:3000 (set NEXT_PUBLIC_SITE_URL or rely on workers.dev fallback in src/lib/site-url.ts):\n  - ${localhostHits
+      .slice(0, 10)
+      .join("\n  - ")}`
+  );
+}
+
 const rel = (p) => path.relative(root, p);
 console.log("check-opennext-assets: OK");
 console.log(`  assets: ${rel(assetsDir)}`);
 console.log(`  css: ${cssFiles.length}, js chunks: ${jsFiles.length}, media: ${mediaFiles.length}`);
 console.log(`  html files scanned: ${htmlFiles.length}, static refs verified: ${referenced.size}`);
 console.log(`  public cases/logo/_headers: present`);
+console.log(`  metadata: no localhost:3000 in built HTML`);
 console.log(
   "  deploy with: npm run deploy   # opennextjs-cloudflare build + ASSETS upload"
 );
 console.log(
   "  preview upload: npm run upload  # versions upload (includes assets); do NOT use Pages git deploy"
+);
+console.log(
+  "  QA surface: https://magicremover-clone.guochao950518.workers.dev (not pages.dev)"
 );
