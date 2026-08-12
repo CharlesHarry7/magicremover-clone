@@ -36,11 +36,13 @@ class ApiError extends Error {
 }
 
 function missingKeyResponse() {
+  // Server log only — never put env/provider names in the JSON body.
   console.error(
     "MISSING_API_KEY: set REPLICATE_API_TOKEN in .env.local, .dev.vars, or wrangler secret, then restart/redeploy."
   );
   return NextResponse.json(
     {
+      // Neutral client-facing copy only (no REPLICATE_*/wrangler/env instructions).
       error: SERVICE_UNAVAILABLE_API_ERROR,
       code: "MISSING_API_KEY",
     },
@@ -61,8 +63,13 @@ function errorResponse(
   extras?: Record<string, unknown>
 ) {
   if (code === "MISSING_API_KEY" || status === 503) {
+    // Force neutral fields last so extras cannot overwrite a secret-bearing error.
     return NextResponse.json(
       {
+<<<<<<< Updated upstream
+=======
+        ...extras,
+>>>>>>> Stashed changes
         error: SERVICE_UNAVAILABLE_API_ERROR,
         code: "MISSING_API_KEY",
       },
@@ -75,7 +82,7 @@ function errorResponse(
     ? "Removal failed. Please try again."
     : error;
   return NextResponse.json(
-    { error: safeError, code: safeCode, ...extras },
+    { ...extras, error: safeError, code: safeCode },
     { status }
   );
 }
