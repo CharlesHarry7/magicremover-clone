@@ -1,5 +1,14 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
+	// OpenNext Cloudflare Worker + Workers Static Assets (ASSETS).
+	// REQUIRED deploy path (uploads worker.js AND .open-next/assets):
+	//   npm run deploy
+	//   # = opennextjs-cloudflare build && check:assets && opennextjs-cloudflare deploy
+	// Preview version (non-promoting upload with assets):
+	//   npm run upload
+	// DO NOT use Cloudflare Pages git integration with `next build` only —
+	// that publishes HTML/Worker without the OpenNext ASSETS bundle and yields
+	// HTML 200 + /_next/static/* 404 (and /cases/* 404). Prefer Workers.
 	"main": ".open-next/worker.js",
 	"name": "magicremover-clone",
 	"compatibility_date": "2026-08-12",
@@ -7,12 +16,19 @@
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
+	// Serve workers.dev in addition to any pages.dev alias bound in the dashboard.
+	"workers_dev": true,
+	"preview_urls": true,
 	"assets": {
+		// Built by `opennextjs-cloudflare build` — includes /_next/static/** and public/**
 		"directory": ".open-next/assets",
 		"binding": "ASSETS"
+		// run_worker_first defaults to false: platform serves matching ASSETS
+		// (CSS/JS/media/cases) before invoking the Worker. Do not remove this binding.
 	},
 	"services": [
 		{
+			// Required by OpenNext revalidation/queue wiring; must match "name" above.
 			"binding": "WORKER_SELF_REFERENCE",
 			"service": "magicremover-clone"
 		}

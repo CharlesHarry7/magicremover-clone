@@ -71,20 +71,52 @@ Worker binding typings live in slim `cloudflare-env.d.ts`. Regenerate a full dum
 | `npm run build` | Production Next.js build |
 | `npm run lint` | ESLint (flat config; `eslint-config-next@16` for flat exports while the app stays on Next 15) |
 | `npm run typecheck` | TypeScript (`tsc --noEmit`) |
-| CI | GitHub Actions runs `lint` → `typecheck` → `build` on push/PR |
-| `npm run preview` | OpenNext Cloudflare build + local Workers preview |
-| `npm run deploy` | OpenNext Cloudflare build + `wrangler` deploy |
-| `npm run upload` | OpenNext build + upload (no promote) |
+| CI | `lint` → `typecheck` → `build` → `build:worker` → `check:assets` |
+| `npm run build:worker` | OpenNext Cloudflare build (Worker + ASSETS) |
+| `npm run check:assets` | Fail if built HTML refs / public cases are missing from `.open-next/assets` |
+| `npm run preview` | OpenNext build + asset gate + local Workers preview |
+| `npm run deploy` | OpenNext build + asset gate + Workers deploy (ASSETS included) |
+| `npm run upload` | OpenNext build + asset gate + versions upload (no promote) |
+| `npm run deploy:preview` | Versions upload with `--preview-alias preview` |
+| `npm run smoke:deployed -- <url>` | Curl-check CSS/JS/media/cases on a live preview URL |
 | `npm run cf-typegen` | Regenerate Worker env types |
 
-## Deploy (Cloudflare Workers)
+## Deploy (Cloudflare Workers + OpenNext ASSETS)
 
-Config: `open-next.config.ts` + `wrangler.jsonc` (worker name `magicremover-clone`, `nodejs_compat`).
+Config: `open-next.config.ts` + `wrangler.jsonc` (worker name `magicremover-clone`, `nodejs_compat`, `assets.directory: .open-next/assets`, `ASSETS` binding).
+
+**Correct path (required):**
 
 ```bash
 npm run deploy
+# = opennextjs-cloudflare build && npm run check:assets && opennextjs-cloudflare deploy
 npx wrangler secret put REPLICATE_API_TOKEN
 ```
+
+| Command | What it does |
+| --- | --- |
+| `npm run build:worker` | `opennextjs-cloudflare build` → `.open-next/worker.js` + `.open-next/assets` |
+| `npm run check:assets` | Fails if `/_next/static` or `/cases/*` are missing from `.open-next/assets` |
+| `npm run deploy` | Build + asset gate + **Workers deploy** (uploads Worker **and** ASSETS) |
+| `npm run upload` | Build + asset gate + `wrangler versions upload` (non-promoting preview version) |
+| `npm run deploy:preview` | Same as upload with `--preview-alias preview` |
+| Post-deploy smoke | `node scripts/smoke-deployed-assets.mjs https://YOUR_PREVIEW_URL` |
+
+**Do not** use Cloudflare Pages git integration with `next build` / `pages deploy` alone. That surface often publishes HTML/Worker without the OpenNext `.open-next/assets` bundle, which looks like:
+
+- `/` → HTML **200**
+- `/_next/static/css/*.css`, `/_next/static/chunks/*`, `/_next/static/media/*` → **404**
+- `/cases/*`, `/logo.webp` → **404**
+
+HTML 200 ≠ usable. Always deploy via `opennextjs-cloudflare deploy` / `npm run deploy` so ASSETS is uploaded with the Worker.
+
+Expected URL patterns after a Workers deploy:
+
+- `https://magicremover-clone.<account>.workers.dev` (when `workers_dev` is enabled)
+- Dashboard preview / version URLs from `npm run upload`
+- A `*.pages.dev` hostname may still be attached in the dashboard — treat it as broken unless `smoke-deployed-assets.mjs` shows CSS **200**
+
+Never blindly merge over production to “fix” a Pages git deploy; redeploy with the OpenNext Workers path above.
 
 ### Remove API notes (Workers)
 
