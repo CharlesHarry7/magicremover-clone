@@ -30,9 +30,9 @@ function preventFileDrag(e: DragEvent | globalThis.DragEvent) {
 }
 
 /**
- * Click / drop / CDP file-input target.
- * Not a button element — Chrome often never fires `drop` on buttons, which left
- * the editor stuck on “Upload a photo to start” with no toast.
+ * Click / drop file-input target.
+ * Single onChange handler — no native change/input listeners to avoid
+ * duplicate uploads that leave the canvas stuck on step 1.
  */
 export default function PhotoDropzone({
   id,
@@ -42,22 +42,7 @@ export default function PhotoDropzone({
   "aria-label": ariaLabel,
   "aria-describedby": ariaDescribedBy,
 }: PhotoDropzoneProps) {
-  useEffect(() => {
-    const el = inputRef.current;
-    if (!el) return;
-    const onPicked = () => {
-      const file = fileFromInputElement(el);
-      if (!file) return;
-      onFile(file);
-    };
-    el.addEventListener("change", onPicked);
-    el.addEventListener("input", onPicked);
-    return () => {
-      el.removeEventListener("change", onPicked);
-      el.removeEventListener("input", onPicked);
-    };
-  }, [inputRef, onFile]);
-
+  // Window-level drag/drop so files dropped anywhere on the page are caught.
   useEffect(() => {
     const onDragOver = (e: globalThis.DragEvent) => {
       if (!dataTransferLooksLikeFiles(e.dataTransfer)) return;
@@ -83,7 +68,13 @@ export default function PhotoDropzone({
     };
   }, [onFile]);
 
-  const onDrop = (e: DragEvent<HTMLLabelElement>) => {
+  const handleInputChange = (el: HTMLInputElement) => {
+    const file = fileFromInputElement(el);
+    if (!file) return;
+    onFile(file);
+  };
+
+  const onLocalDrop = (e: DragEvent<HTMLLabelElement>) => {
     preventFileDrag(e);
     const file = fileFromDataTransfer(e.dataTransfer);
     if (!file) {
@@ -103,7 +94,7 @@ export default function PhotoDropzone({
       aria-describedby={ariaDescribedBy}
       onDragEnter={preventFileDrag}
       onDragOver={preventFileDrag}
-      onDrop={onDrop}
+      onDrop={onLocalDrop}
     >
       <input
         id={id}
@@ -111,16 +102,7 @@ export default function PhotoDropzone({
         type="file"
         accept={IMAGE_FILE_ACCEPT}
         className="absolute inset-0 z-10 h-full w-full cursor-pointer opacity-0"
-        onChange={(e) => {
-          const file = fileFromInputElement(e.currentTarget);
-          if (!file) return;
-          onFile(file);
-        }}
-        onInput={(e) => {
-          const file = fileFromInputElement(e.currentTarget);
-          if (!file) return;
-          onFile(file);
-        }}
+        onChange={(e) => handleInputChange(e.currentTarget)}
       />
       <span className="pointer-events-none block">
         <UploadIcon
