@@ -32,6 +32,7 @@ export default function CoverHookPromo() {
             href="https://coverhook.com"
             className="text-primary hover:underline"
             target="_blank"
+            rel="noopener noreferrer"
           >
             CoverHook
           </Link>{" "}
@@ -45,7 +46,13 @@ export default function CoverHookPromo() {
                 variant="link"
                 className="h-auto px-0"
                 nativeButton={false}
-                render={<Link href={link.href} target="_blank" />}
+                render={
+                  <Link
+                    href={link.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  />
+                }
               >
                 {link.label}
               </Button>

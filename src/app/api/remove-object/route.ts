@@ -1,5 +1,14 @@
 import { NextResponse } from "next/server";
 
+import {
+  CREATE_TIMEOUT_MS,
+  MAX_DATA_URL_CHARS,
+  MAX_POLLS,
+  OVERALL_BUDGET_MS,
+  POLL_INTERVAL_MS,
+  RESULT_FETCH_TIMEOUT_MS,
+} from "@/lib/remove-limits";
+
 /**
  * Object removal via Replicate (LaMa-based image-object-removal).
  *
@@ -13,14 +22,17 @@ import { NextResponse } from "next/server";
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 const REPLICATE_MODEL = "dpakkk/image-object-removal";
 
-/** ~10MB decoded image ceiling expressed as data-URL character length. */
-const MAX_DATA_URL_CHARS = 14_000_000;
-/** Overall handler budget for Worker-friendly responses. */
-const OVERALL_BUDGET_MS = 28_000;
-const CREATE_TIMEOUT_MS = 20_000;
-const POLL_INTERVAL_MS = 1_500;
-const MAX_POLLS = 6;
-const RESULT_FETCH_TIMEOUT_MS = 8_000;
+class ApiError extends Error {
+  status: number;
+  code: string;
+
+  constructor(status: number, code: string, message: string) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+    this.code = code;
+  }
+}
 
 function missingKeyResponse() {
   return NextResponse.json(
@@ -58,8 +70,13 @@ async function fetchWithTimeout(
   try {
     return await fetch(url, { ...init, signal });
   } catch (err) {
-    if (err instanceof Error && (err.name === "TimeoutError" || err.name === "AbortError")) {
-      throw new Error("Upstream request timed out. Try a smaller image or try again.");
+    if (
+      err instanceof Error &&
+      (err.name === "TimeoutError" || err.name === "AbortError")
+    ) {
+      throw new Error(
+        "Upstream request timed out. Try a smaller image or try again."
+      );
     }
     throw err;
   }
@@ -93,25 +110,24 @@ async function callReplicate(
   if (!createRes.ok) {
     const text = await createRes.text();
     if (createRes.status === 401 || createRes.status === 403) {
-      const err = new Error(
+      throw new ApiError(
+        502,
+        "REPLICATE_AUTH",
         "Replicate rejected the API token. Check that REPLICATE_API_TOKEN is valid."
       );
-      (err as Error & { status?: number; code?: string }).status = 502;
-      (err as Error & { status?: number; code?: string }).code = "REPLICATE_AUTH";
-      throw err;
     }
     if (createRes.status === 429) {
-      const err = new Error("Replicate rate limit hit. Wait a moment and try again.");
-      (err as Error & { status?: number; code?: string }).status = 429;
-      (err as Error & { status?: number; code?: string }).code = "REPLICATE_RATE_LIMIT";
-      throw err;
+      throw new ApiError(
+        429,
+        "REPLICATE_RATE_LIMIT",
+        "Replicate rate limit hit. Wait a moment and try again."
+      );
     }
-    const err = new Error(
+    throw new ApiError(
+      502,
+      "REPLICATE_ERROR",
       `Replicate API error: ${createRes.status} ${text.slice(0, 300)}`
     );
-    (err as Error & { status?: number; code?: string }).status = 502;
-    (err as Error & { status?: number; code?: string }).code = "REPLICATE_ERROR";
-    throw err;
   }
 
   let data = await createRes.json();
@@ -121,18 +137,20 @@ async function callReplicate(
   }
 
   if (data.status === "failed" || data.status === "canceled") {
-    const err = new Error(data.error || `Prediction ${data.status}`);
-    (err as Error & { status?: number; code?: string }).status = 502;
-    (err as Error & { status?: number; code?: string }).code = "PREDICTION_FAILED";
-    throw err;
+    throw new ApiError(
+      502,
+      "PREDICTION_FAILED",
+      data.error || `Prediction ${data.status}`
+    );
   }
 
   const getUrl = data.urls?.get as string | undefined;
   if (!getUrl) {
-    const err = new Error("Replicate did not return a result or poll URL");
-    (err as Error & { status?: number; code?: string }).status = 502;
-    (err as Error & { status?: number; code?: string }).code = "REPLICATE_NO_POLL_URL";
-    throw err;
+    throw new ApiError(
+      502,
+      "REPLICATE_NO_POLL_URL",
+      "Replicate did not return a result or poll URL"
+    );
   }
 
   for (let i = 0; i < MAX_POLLS; i++) {
@@ -140,34 +158,35 @@ async function callReplicate(
       break;
     }
     await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-    const pollTimeout = Math.min(8_000, remainingMs(deadline));
+    const pollTimeout = Math.min(RESULT_FETCH_TIMEOUT_MS, remainingMs(deadline));
     const pollRes = await fetchWithTimeout(
       getUrl,
       { headers: { Authorization: `Bearer ${REPLICATE_API_TOKEN}` } },
       pollTimeout
     );
     if (!pollRes.ok) {
-      const err = new Error(`Failed to poll prediction: ${pollRes.status}`);
-      (err as Error & { status?: number; code?: string }).status = 502;
-      (err as Error & { status?: number; code?: string }).code = "REPLICATE_POLL_ERROR";
-      throw err;
+      throw new ApiError(
+        502,
+        "REPLICATE_POLL_ERROR",
+        `Failed to poll prediction: ${pollRes.status}`
+      );
     }
     data = await pollRes.json();
     if (data.status === "succeeded") return normalizeOutput(data.output);
     if (data.status === "failed" || data.status === "canceled") {
-      const err = new Error(data.error || `Prediction ${data.status}`);
-      (err as Error & { status?: number; code?: string }).status = 502;
-      (err as Error & { status?: number; code?: string }).code = "PREDICTION_FAILED";
-      throw err;
+      throw new ApiError(
+        502,
+        "PREDICTION_FAILED",
+        data.error || `Prediction ${data.status}`
+      );
     }
   }
 
-  const err = new Error(
+  throw new ApiError(
+    504,
+    "PREDICTION_TIMEOUT",
     "Prediction timed out (~28s Worker budget). Try a smaller image or try again."
   );
-  (err as Error & { status?: number; code?: string }).status = 504;
-  (err as Error & { status?: number; code?: string }).code = "PREDICTION_TIMEOUT";
-  throw err;
 }
 
 function normalizeOutput(output: unknown): string {
@@ -248,13 +267,16 @@ export async function POST(request: Request) {
     return NextResponse.json({ result });
   } catch (error) {
     console.error("Remove object error:", error);
-    const err = error as Error & { status?: number; code?: string };
-    const message = err instanceof Error ? err.message : "Failed to process image";
+    if (error instanceof ApiError) {
+      return errorResponse(error.status, error.code, error.message);
+    }
+    const message =
+      error instanceof Error ? error.message : "Failed to process image";
     const timedOut = /timed out/i.test(message);
-    const status = err.status ?? (timedOut ? 504 : 500);
-    const code =
-      err.code ??
-      (timedOut ? "PREDICTION_TIMEOUT" : status === 500 ? "INTERNAL_ERROR" : "UPSTREAM_ERROR");
-    return errorResponse(status, code, message);
+    return errorResponse(
+      timedOut ? 504 : 500,
+      timedOut ? "PREDICTION_TIMEOUT" : "INTERNAL_ERROR",
+      message
+    );
   }
 }

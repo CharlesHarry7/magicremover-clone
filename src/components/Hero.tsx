@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import { FREE_EDITS } from "@/lib/remove-limits";
 
 const tabs = ["People", "Object", "Text", "Watermark", "Sticker"] as const;
 
@@ -241,7 +242,7 @@ export default function Hero() {
                       variant="secondary"
                       className="bg-success/10 text-success hover:bg-success/10"
                     >
-                      Demo edits 2 / 2
+                      Demo edits {FREE_EDITS} / {FREE_EDITS}
                     </Badge>
                     <Button
                       variant="link"

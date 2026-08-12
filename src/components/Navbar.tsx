@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator";
 import {
   Sheet,
   SheetContent,
+  SheetDescription,
   SheetHeader,
   SheetTitle,
   SheetTrigger,
@@ -84,6 +85,7 @@ export default function Navbar() {
                 />
                 MagicRemover
               </SheetTitle>
+              <SheetDescription>Site navigation</SheetDescription>
             </SheetHeader>
             <Separator />
             <div className="flex flex-col gap-1 px-2">

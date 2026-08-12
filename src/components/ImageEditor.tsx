@@ -18,14 +18,19 @@ import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  CLIENT_ABORT_MS,
+  FREE_EDITS,
+  MAX_IMAGE_DIM,
+  MAX_UPLOAD_BYTES,
+  OVERALL_BUDGET_MS,
+} from "@/lib/remove-limits";
 import { cn } from "@/lib/utils";
 
 interface ImageEditorProps {
-  onResult?: (resultUrl: string) => void;
   initialFile?: File | null;
 }
 
-const FREE_EDITS = 2;
 const MAX_UNDO = 40;
 const BRUSH_PRESETS = [12, 30, 50] as const;
 
@@ -33,38 +38,21 @@ function formatRemoveApiError(
   status: number,
   data: { error?: string; code?: string }
 ): string {
+  if (data.error) return data.error;
   const code = data.code;
   if (code === "MISSING_API_KEY" || status === 503) {
-    return (
-      data.error ||
-      "Object removal is not configured on the server (HTTP 503)."
-    );
+    return "Object removal is not configured on the server (HTTP 503).";
   }
   if (code === "PREDICTION_TIMEOUT" || status === 504) {
-    return (
-      data.error ||
-      "Removal timed out on the Worker (~30s budget). Try a smaller image."
-    );
+    return "Removal timed out on the Worker (~30s budget). Try a smaller image.";
   }
   if (code === "PAYLOAD_TOO_LARGE" || status === 413) {
-    return (
-      data.error ||
-      "That photo is too large for the Worker. Use a file under ~10 MB."
-    );
+    return "That photo is too large for the Worker. Use a file under ~10 MB.";
   }
   if (code === "REPLICATE_RATE_LIMIT" || status === 429) {
-    return (
-      data.error ||
-      "Removal provider is rate-limiting requests. Try again shortly."
-    );
+    return "Removal provider is rate-limiting requests. Try again shortly.";
   }
-  if (code === "INVALID_JSON" || code === "MISSING_FIELDS" || code === "INVALID_DATA_URL") {
-    return data.error || "Invalid remove request. Re-upload the photo and try again.";
-  }
-  if (code === "REPLICATE_AUTH" || code === "REPLICATE_ERROR" || code === "PREDICTION_FAILED") {
-    return data.error || "The removal provider failed this request. Try again.";
-  }
-  return data.error || `Failed to process image (HTTP ${status})`;
+  return `Failed to process image (HTTP ${status})`;
 }
 
 async function readRemoveApiPayload(res: Response): Promise<{
@@ -267,7 +255,7 @@ function BeforeAfterCompare({
   );
 }
 
-export default function ImageEditor({ onResult, initialFile }: ImageEditorProps) {
+export default function ImageEditor({ initialFile }: ImageEditorProps) {
   const uploadInputId = useId();
   const statusId = useId();
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -293,7 +281,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
   const [downloadNote, setDownloadNote] = useState<string | null>(null);
   const [beforeUrl, setBeforeUrl] = useState<string>("");
   const [maskPreviewUrl, setMaskPreviewUrl] = useState<string>("");
-  const [dailyLeft, setDailyLeft] = useState(FREE_EDITS);
+  const [sessionLeft, setSessionLeft] = useState(FREE_EDITS);
   const [drawingHistory, setDrawingHistory] = useState<ImageData[]>([]);
   const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
   const [hasMask, setHasMask] = useState(false);
@@ -331,7 +319,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       setError("Please upload a JPG, PNG, or WebP image.");
       return;
     }
-    if (file.size > 10 * 1024 * 1024) {
+    if (file.size > MAX_UPLOAD_BYTES) {
       setError("File size must be under 10 MB.");
       return;
     }
@@ -343,15 +331,24 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     setHasMask(false);
 
     const reader = new FileReader();
+    reader.onerror = () => {
+      setError("Could not read that file. Try another image.");
+    };
     reader.onload = (e) => {
-      const dataUrl = e.target?.result as string;
+      const dataUrl = e.target?.result;
+      if (typeof dataUrl !== "string") {
+        setError("Could not read that file. Try another image.");
+        return;
+      }
       const img = new window.Image();
+      img.onerror = () => {
+        setError("Could not decode that image. Try JPG, PNG, or WebP.");
+      };
       img.onload = () => {
         let w = img.width;
         let h = img.height;
-        const maxDim = 1536;
-        if (w > maxDim || h > maxDim) {
-          const ratio = Math.min(maxDim / w, maxDim / h);
+        if (w > MAX_IMAGE_DIM || h > MAX_IMAGE_DIM) {
+          const ratio = Math.min(MAX_IMAGE_DIM / w, MAX_IMAGE_DIM / h);
           w = Math.round(w * ratio);
           h = Math.round(h * ratio);
         }
@@ -379,7 +376,8 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
         setDrawingHistory([]);
         setImage(img);
-        setBeforeUrl(dataUrl);
+        // Use the resized canvas so before/after compare the same pixels.
+        setBeforeUrl(canvas.toDataURL("image/jpeg", 0.92));
       };
       img.src = dataUrl;
     };
@@ -687,10 +685,19 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z") {
-        e.preventDefault();
-        handleUndo();
+      if (!(e.metaKey || e.ctrlKey) || e.key.toLowerCase() !== "z") return;
+      const target = e.target as HTMLElement | null;
+      if (
+        target &&
+        (target.isContentEditable ||
+          target.tagName === "INPUT" ||
+          target.tagName === "TEXTAREA" ||
+          target.tagName === "SELECT")
+      ) {
+        return;
       }
+      e.preventDefault();
+      handleUndo();
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
@@ -743,7 +750,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     const canvas = canvasRef.current;
     if (!canvas || !image) return;
 
-    if (dailyLeft <= 0) {
+    if (sessionLeft <= 0) {
       setError(
         "No demo edits left in this session. Refresh the page to reset the counter."
       );
@@ -763,7 +770,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
     const controller = new AbortController();
     // Slightly above Worker budget so the server can return 504 first when possible.
-    const timeoutId = window.setTimeout(() => controller.abort(), 35_000);
+    const timeoutId = window.setTimeout(() => controller.abort(), CLIENT_ABORT_MS);
 
     try {
       const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
@@ -787,12 +794,11 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
       setResultUrl(data.result);
       setCompareMode("slider");
-      setDailyLeft((prev) => prev - 1);
-      onResult?.(data.result);
+      setSessionLeft((prev) => prev - 1);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setError(
-          "Request aborted after ~35s with no response. The Worker usually returns HTTP 504 around 28s — try a smaller image."
+          `Request aborted after ~${Math.round(CLIENT_ABORT_MS / 1000)}s with no response. The Worker usually returns HTTP 504 around ${Math.round(OVERALL_BUDGET_MS / 1000)}s — try a smaller image.`
         );
       } else if (err instanceof TypeError) {
         setError(
@@ -805,7 +811,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       window.clearTimeout(timeoutId);
       setLoading(false);
     }
-  }, [image, dailyLeft, onResult, buildBinaryMaskDataUrl]);
+  }, [image, sessionLeft, buildBinaryMaskDataUrl]);
 
   const blobFromResult = useCallback(async (url: string) => {
     if (url.startsWith("data:")) {
@@ -976,7 +982,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           variant="secondary"
           className="bg-success/10 text-success hover:bg-success/10"
         >
-          Demo edits {dailyLeft} / {FREE_EDITS}
+          Demo edits {sessionLeft} / {FREE_EDITS}
         </Badge>
       </div>
 
@@ -1218,7 +1224,6 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             <canvas
               ref={maskCanvasRef}
               className="absolute inset-0 h-full w-full touch-none"
-              role="img"
               aria-label="Paint mask over areas to remove. Use Undo or Clear to adjust."
               style={{
                 cursor: "none",
@@ -1346,7 +1351,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             className="min-h-11 w-full"
             size="lg"
             onClick={handleRemoveObject}
-            disabled={loading || dailyLeft <= 0 || !hasMask}
+            disabled={loading || sessionLeft <= 0 || !hasMask}
             aria-describedby={statusId}
           >
             {loading ? (

@@ -3,7 +3,7 @@ const steps = [
     step: "1",
     title: "Upload a photo",
     description:
-      "Drag and drop any JPG or PNG, or click to pick one. Images over 1536px are resized automatically.",
+      "Drag and drop a JPG, PNG, or WebP, or click to pick one. Images over 1536px are resized automatically.",
   },
   {
     step: "2",
@@ -15,7 +15,7 @@ const steps = [
     step: "3",
     title: "Download the result",
     description:
-      "Tap Remove objects. In about 15 seconds the AI returns a clean photo — download it as PNG.",
+      "Tap Remove objects. In about 15–30 seconds the AI returns a clean photo — then download or share the result.",
   },
 ];
 

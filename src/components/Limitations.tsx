@@ -30,7 +30,7 @@ export default function Limitations() {
         </h3>
         <p className="mx-auto mb-10 max-w-2xl text-center text-sm leading-relaxed text-muted-foreground">
           The AI does great on small, well-defined edits. Here&apos;s where it
-          currently falls short — so you don&apos;t spend a credit on a shot it
+          currently falls short — so you don&apos;t burn a demo edit on a shot it
           can&apos;t fix.
         </p>
 
