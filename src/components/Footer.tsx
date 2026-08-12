@@ -2,16 +2,16 @@ import Link from "next/link";
 import Image from "next/image";
 
 const allTools = [
-  { label: "Remove People from Photo", href: "/remove-people-from-photo" },
-  { label: "Remove Watermark from Photo", href: "/remove-watermark-from-photo" },
-  { label: "Remove Object from Photo", href: "/remove-object-from-photo" },
-  { label: "Remove Sticker from Image", href: "/remove-sticker-from-image" },
-  { label: "Remove Text from Image", href: "/remove-text-from-image" },
-  { label: "Remove Gemini Watermark", href: "/remove-gemini-watermark" },
-  { label: "Logo Remover", href: "/logo-remover" },
-  { label: "Magic Eraser", href: "/magic-eraser" },
-  { label: "AI Image Generator", href: "/ai-image-generator" },
-  { label: "Edit Text", href: "/edit-text-in-image" },
+  { label: "Remove People from Photo", href: "#try" },
+  { label: "Remove Watermark from Photo", href: "#try" },
+  { label: "Remove Object from Photo", href: "#try" },
+  { label: "Remove Sticker from Image", href: "#try" },
+  { label: "Remove Text from Image", href: "#try" },
+  { label: "Remove Gemini Watermark", href: "#try" },
+  { label: "Logo Remover", href: "#try" },
+  { label: "Magic Eraser", href: "#try" },
+  { label: "AI Image Generator", href: "#try" },
+  { label: "Edit Text", href: "#try" },
 ];
 
 const guides = [

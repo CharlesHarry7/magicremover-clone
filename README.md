@@ -1,36 +1,56 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# MagicRemover Clone
 
-## Getting Started
+Free AI object remover — upload a photo, brush the area to erase, run AI inpainting, compare before/after, and download the result.
 
-First, run the development server:
+Built with Next.js and deployed to Cloudflare Workers via OpenNext.
+
+## Features
+
+- Upload JPG / PNG / WebP (up to ~10 MB)
+- Brush mask with adjustable size, undo, and clear
+- AI object removal via Replicate (`dpakkk/image-object-removal`)
+- Before / after comparison and download
+- Honest error when `REPLICATE_API_TOKEN` is missing (no silent fake success)
+- No Stripe / payments
+
+## Setup
 
 ```bash
+npm install
+cp .dev.vars.example .dev.vars
+# Put your Replicate token in .dev.vars
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Environment
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Variable | Required | Description |
+| --- | --- | --- |
+| `REPLICATE_API_TOKEN` | Yes (for AI remove) | Replicate API token. Without it, `/api/remove-object` returns HTTP 503 with a clear message. |
 
-## Learn More
+Local preview / Workers: use `.dev.vars`. Production:
 
-To learn more about Next.js, take a look at the following resources:
+```bash
+npx wrangler secret put REPLICATE_API_TOKEN
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Scripts
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+| Command | Description |
+| --- | --- |
+| `npm run dev` | Next.js dev server |
+| `npm run build` | Production Next.js build |
+| `npm run lint` | ESLint |
+| `npm run preview` | OpenNext Cloudflare build + local preview |
+| `npm run deploy` | OpenNext Cloudflare build + deploy |
 
-## Deploy on Vercel
+## Deploy (Cloudflare Workers)
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+OpenNext config lives in `open-next.config.ts` and `wrangler.jsonc` (`magicremover-clone`).
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+```bash
+npm run deploy
+npx wrangler secret put REPLICATE_API_TOKEN
+```

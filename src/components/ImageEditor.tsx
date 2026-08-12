@@ -1,17 +1,20 @@
 "use client";
 
-import { useRef, useState, useCallback } from "react";
+import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
 
 interface ImageEditorProps {
   onResult?: (resultUrl: string) => void;
+  initialFile?: File | null;
 }
 
-export default function ImageEditor({ onResult }: ImageEditorProps) {
+const FREE_EDITS = 2;
+
+export default function ImageEditor({ onResult, initialFile }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const undoStackRef = useRef<ImageData[]>([]);
+  const lastPointRef = useRef<{ x: number; y: number } | null>(null);
 
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -19,98 +22,19 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [beforeUrl, setBeforeUrl] = useState("");
-  const [dailyLeft, setDailyLeft] = useState(2);
-  const [noApiKey, setNoApiKey] = useState(false);
+  const [beforeUrl, setBeforeUrl] = useState<string>("");
+  const [maskPreviewUrl, setMaskPreviewUrl] = useState<string>("");
+  const [dailyLeft, setDailyLeft] = useState(FREE_EDITS);
+  const [drawingHistory, setDrawingHistory] = useState<ImageData[]>([]);
+  const [canvasSize, setCanvasSize] = useState({ w: 0, h: 0 });
 
-  const drawDot = useCallback(
-    (x: number, y: number) => {
-      const maskCanvas = maskCanvasRef.current;
-      if (!maskCanvas) return;
-      const ctx = maskCanvas.getContext("2d");
-      if (!ctx) return;
-
-      ctx.fillStyle = "rgba(255, 0, 0, 0.6)";
-      ctx.beginPath();
-      ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
-      ctx.fill();
-    },
-    [brushSize]
-  );
-
-  const getCanvasCoords = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      const maskCanvas = maskCanvasRef.current;
-      if (!maskCanvas) return { x: 0, y: 0 };
-      const rect = maskCanvas.getBoundingClientRect();
-      const scaleX = maskCanvas.width / rect.width;
-      const scaleY = maskCanvas.height / rect.height;
-
-      if ("touches" in e) {
-        const touch = e.touches[0] || e.changedTouches[0];
-        return {
-          x: (touch.clientX - rect.left) * scaleX,
-          y: (touch.clientY - rect.top) * scaleY,
-        };
-      }
-      return {
-        x: (e.clientX - rect.left) * scaleX,
-        y: (e.clientY - rect.top) * scaleY,
-      };
-    },
-    []
-  );
-
-  const handleMouseDown = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      if (!image) return;
-      e.preventDefault();
-      const maskCanvas = maskCanvasRef.current;
-      if (!maskCanvas) return;
-      const ctx = maskCanvas.getContext("2d");
-      if (!ctx) return;
-
-      undoStackRef.current.push(ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height));
-      setIsDrawing(true);
-      const { x, y } = getCanvasCoords(e);
-      drawDot(x, y);
-    },
-    [image, drawDot, getCanvasCoords]
-  );
-
-  const handleMouseMove = useCallback(
-    (e: React.MouseEvent | React.TouchEvent) => {
-      if (!isDrawing) return;
-      e.preventDefault();
-      const { x, y } = getCanvasCoords(e);
-      drawDot(x, y);
-    },
-    [isDrawing, drawDot, getCanvasCoords]
-  );
-
-  const handleMouseUp = useCallback(() => {
-    setIsDrawing(false);
-  }, []);
-
-  const handleUndo = useCallback(() => {
-    const maskCanvas = maskCanvasRef.current;
-    if (!maskCanvas) return;
-    const ctx = maskCanvas.getContext("2d");
-    if (!ctx) return;
-
-    const stack = undoStackRef.current;
-    if (stack.length === 0) return;
-    const lastState = stack.pop()!;
-    ctx.putImageData(lastState, 0, 0);
-  }, []);
-
-  const handleClear = useCallback(() => {
+  const clearMask = useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
     const ctx = maskCanvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-    undoStackRef.current = [];
+    setDrawingHistory([]);
   }, []);
 
   const handleFileUpload = useCallback(
@@ -126,10 +50,11 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
 
       setError(null);
       setResultUrl(null);
-      handleClear();
+      setMaskPreviewUrl("");
 
       const reader = new FileReader();
       reader.onload = (e) => {
+        const dataUrl = e.target?.result as string;
         const img = new window.Image();
         img.onload = () => {
           let w = img.width;
@@ -149,21 +74,169 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
           canvas.height = h;
           maskCanvas.width = w;
           maskCanvas.height = h;
+          setCanvasSize({ w, h });
 
           const ctx = canvas.getContext("2d");
           if (ctx) {
+            ctx.clearRect(0, 0, w, h);
             ctx.drawImage(img, 0, 0, w, h);
           }
 
+          const maskCtx = maskCanvas.getContext("2d");
+          if (maskCtx) {
+            maskCtx.clearRect(0, 0, w, h);
+          }
+
+          setDrawingHistory([]);
           setImage(img);
-          setBeforeUrl(e.target?.result as string);
+          setBeforeUrl(dataUrl);
         };
-        img.src = e.target?.result as string;
+        img.src = dataUrl;
       };
       reader.readAsDataURL(file);
     },
-    [handleClear]
+    []
   );
+
+  useEffect(() => {
+    if (!initialFile) return;
+    let cancelled = false;
+    // Defer so we don't setState synchronously inside the effect body.
+    queueMicrotask(() => {
+      if (!cancelled) handleFileUpload(initialFile);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initialFile, handleFileUpload]);
+
+  const strokeBrush = useCallback(
+    (x: number, y: number, from: { x: number; y: number } | null) => {
+      const maskCanvas = maskCanvasRef.current;
+      if (!maskCanvas) return;
+      const ctx = maskCanvas.getContext("2d");
+      if (!ctx) return;
+
+      ctx.strokeStyle = "rgba(255, 0, 0, 0.55)";
+      ctx.fillStyle = "rgba(255, 0, 0, 0.55)";
+      ctx.lineWidth = brushSize;
+      ctx.lineCap = "round";
+      ctx.lineJoin = "round";
+
+      if (from) {
+        ctx.beginPath();
+        ctx.moveTo(from.x, from.y);
+        ctx.lineTo(x, y);
+        ctx.stroke();
+      } else {
+        ctx.beginPath();
+        ctx.arc(x, y, brushSize / 2, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    },
+    [brushSize]
+  );
+
+  const getCanvasCoords = useCallback((e: React.MouseEvent | React.TouchEvent) => {
+    const maskCanvas = maskCanvasRef.current;
+    if (!maskCanvas) return { x: 0, y: 0 };
+    const rect = maskCanvas.getBoundingClientRect();
+    const scaleX = maskCanvas.width / rect.width;
+    const scaleY = maskCanvas.height / rect.height;
+
+    if ("touches" in e) {
+      const touch = e.touches[0] || e.changedTouches[0];
+      return {
+        x: (touch.clientX - rect.left) * scaleX,
+        y: (touch.clientY - rect.top) * scaleY,
+      };
+    }
+    return {
+      x: (e.clientX - rect.left) * scaleX,
+      y: (e.clientY - rect.top) * scaleY,
+    };
+  }, []);
+
+  const handlePointerDown = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      if (!image) return;
+      e.preventDefault();
+      const maskCanvas = maskCanvasRef.current;
+      if (!maskCanvas) return;
+      const ctx = maskCanvas.getContext("2d");
+      if (!ctx) return;
+
+      setDrawingHistory((prev) => [
+        ...prev,
+        ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height),
+      ]);
+      setIsDrawing(true);
+      const point = getCanvasCoords(e);
+      lastPointRef.current = point;
+      strokeBrush(point.x, point.y, null);
+    },
+    [image, getCanvasCoords, strokeBrush]
+  );
+
+  const handlePointerMove = useCallback(
+    (e: React.MouseEvent | React.TouchEvent) => {
+      if (!isDrawing) return;
+      e.preventDefault();
+      const point = getCanvasCoords(e);
+      strokeBrush(point.x, point.y, lastPointRef.current);
+      lastPointRef.current = point;
+    },
+    [isDrawing, getCanvasCoords, strokeBrush]
+  );
+
+  const handlePointerUp = useCallback(() => {
+    setIsDrawing(false);
+    lastPointRef.current = null;
+  }, []);
+
+  const handleUndo = useCallback(() => {
+    const maskCanvas = maskCanvasRef.current;
+    if (!maskCanvas) return;
+    const ctx = maskCanvas.getContext("2d");
+    if (!ctx) return;
+
+    const stack = undoStackRef.current;
+    if (stack.length === 0) return;
+    const lastState = stack.pop()!;
+    ctx.putImageData(lastState, 0, 0);
+  }, []);
+
+  const buildBinaryMaskDataUrl = useCallback(() => {
+    const maskCanvas = maskCanvasRef.current;
+    if (!maskCanvas) return null;
+
+    const out = document.createElement("canvas");
+    out.width = maskCanvas.width;
+    out.height = maskCanvas.height;
+    const ctx = out.getContext("2d");
+    if (!ctx) return null;
+
+    ctx.fillStyle = "#000000";
+    ctx.fillRect(0, 0, out.width, out.height);
+
+    const src = maskCanvas.getContext("2d")!.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    const dst = ctx.getImageData(0, 0, out.width, out.height);
+
+    let hasMask = false;
+    for (let i = 0; i < src.data.length; i += 4) {
+      if (src.data[i + 3] > 10) {
+        dst.data[i] = 255;
+        dst.data[i + 1] = 255;
+        dst.data[i + 2] = 255;
+        dst.data[i + 3] = 255;
+        hasMask = true;
+      }
+    }
+
+    if (!hasMask) return null;
+    ctx.putImageData(dst, 0, 0);
+    return out.toDataURL("image/png");
+  }, []);
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -175,41 +248,31 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
   );
 
   const handleRemoveObject = useCallback(async () => {
-    const maskCanvas = maskCanvasRef.current;
     const canvas = canvasRef.current;
-    if (!maskCanvas || !canvas || !image) return;
+    if (!canvas || !image) return;
+
     if (dailyLeft <= 0) {
-      setError("No free edits left today. Sign in for 2 more.");
+      setError("No free edits left today.");
       return;
     }
 
-    const maskCtx = maskCanvas.getContext("2d");
-    if (!maskCtx) return;
-
-    const imageData = maskCtx.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
-    let hasMask = false;
-    for (let i = 3; i < imageData.data.length; i += 4) {
-      if (imageData.data[i] > 0) {
-        hasMask = true;
-        break;
-      }
-    }
-    if (!hasMask) {
+    const binaryMask = buildBinaryMaskDataUrl();
+    if (!binaryMask) {
       setError("Please brush over the area you want to remove first.");
       return;
     }
 
     setLoading(true);
     setError(null);
+    setMaskPreviewUrl(maskCanvasRef.current?.toDataURL("image/png") || "");
 
     try {
-      const imageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
-      const maskDataUrlStr = maskCanvas.toDataURL("image/png");
+      const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
 
       const res = await fetch("/api/remove-object", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ image: imageDataUrl, mask: maskDataUrlStr }),
+        body: JSON.stringify({ image: imageDataUrl, mask: binaryMask }),
       });
 
       const data = await res.json();
@@ -222,6 +285,10 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
         throw new Error(data.error || "Failed to process image");
       }
 
+      if (typeof data.result !== "string") {
+        throw new Error("Invalid response from remove API");
+      }
+
       setResultUrl(data.result);
       setDailyLeft((prev) => prev - 1);
       onResult?.(data.result);
@@ -230,31 +297,54 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
     } finally {
       setLoading(false);
     }
-  }, [image, dailyLeft, onResult]);
+  }, [image, dailyLeft, onResult, buildBinaryMaskDataUrl]);
 
   const handleDownload = useCallback(async () => {
     if (!resultUrl) return;
-    const a = document.createElement("a");
-    a.href = resultUrl;
-    a.download = "magicremover-result.png";
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
+    try {
+      const res = await fetch(resultUrl);
+      if (!res.ok) throw new Error("Download failed");
+      const blob = await res.blob();
+      const objectUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = objectUrl;
+      a.download = "magicremover-result.png";
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(objectUrl);
+    } catch {
+      // Cross-origin fallback: open in a new tab
+      window.open(resultUrl, "_blank", "noopener,noreferrer");
+    }
   }, [resultUrl]);
 
   const handleNewImage = useCallback(() => {
     setImage(null);
     setResultUrl(null);
+    setMaskPreviewUrl("");
+    clearMask();
     setError(null);
-    setNoApiKey(false);
-    handleClear();
-  }, [handleClear]);
+  }, [clearMask]);
+
+  const errorBanner = error ? (
+    <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-600">
+      {error}
+    </p>
+  ) : null;
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div id="editor" className="mx-auto max-w-4xl scroll-mt-24">
+      <div className="mb-3 flex items-center justify-between text-xs text-muted">
+        <span>Brush the area to erase, then remove</span>
+        <span className="rounded-full bg-success/10 px-2 py-0.5 font-medium text-success">
+          Free today {dailyLeft} / {FREE_EDITS}
+        </span>
+      </div>
+
       {!image ? (
         <div
-          className="rounded-xl border-2 border-dashed border-border p-12 text-center transition-colors hover:border-primary/50 cursor-pointer"
+          className="cursor-pointer rounded-xl border-2 border-dashed border-border p-12 text-center transition-colors hover:border-primary/50"
           onDrop={handleDrop}
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
@@ -267,13 +357,14 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
           <input
             ref={fileInputRef}
             type="file"
-            accept="image/jpeg,image/png"
+            accept="image/jpeg,image/png,image/webp"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) handleFileUpload(file);
             }}
           />
+          {errorBanner}
         </div>
       ) : resultUrl ? (
         <div>
@@ -287,6 +378,16 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
                 className="h-full w-full object-contain"
                 unoptimized
               />
+              {maskPreviewUrl && (
+                <Image
+                  src={maskPreviewUrl}
+                  alt="Mask"
+                  width={600}
+                  height={450}
+                  className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-50"
+                  unoptimized
+                />
+              )}
               <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">Before</span>
             </div>
             <div className="relative flex-1 overflow-hidden rounded-xl bg-gray-100">
@@ -312,41 +413,45 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
               onClick={handleNewImage}
               className="rounded-lg border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-card"
             >
-              Try Another
+              Edit Again
+            </button>
+            <button
+              onClick={() => {
+                setImage(null);
+                setResultUrl(null);
+                setBeforeUrl("");
+                setMaskPreviewUrl("");
+                setError(null);
+                clearMask();
+              }}
+              className="rounded-lg border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-card"
+            >
+              New Image
             </button>
           </div>
+          {errorBanner}
         </div>
       ) : (
         <div>
-          <div className="mb-4 flex items-center justify-center gap-6 text-xs text-muted">
-            <span className="flex items-center gap-1.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-xs font-bold">1</span>
-              Upload
-            </span>
-            <span className="text-border">→</span>
-            <span className="flex items-center gap-1.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-xs font-bold">2</span>
-              Brush
-            </span>
-            <span className="text-border">→</span>
-            <span className="flex items-center gap-1.5">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-white text-xs font-bold">3</span>
-              Remove
-            </span>
-          </div>
-
-          <div className="relative mb-4 overflow-hidden rounded-xl bg-gray-100">
-            <canvas ref={canvasRef} className="max-h-[500px] w-full object-contain" />
+          <div
+            className="relative mx-auto mb-4 max-h-[500px] max-w-full overflow-hidden rounded-xl bg-gray-100"
+            style={
+              canvasSize.w
+                ? { aspectRatio: `${canvasSize.w} / ${canvasSize.h}`, width: "min(100%, 800px)" }
+                : undefined
+            }
+          >
+            <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
             <canvas
               ref={maskCanvasRef}
-              className="absolute inset-0 max-h-[500px] w-full cursor-crosshair object-contain"
-              onMouseDown={handleMouseDown}
-              onMouseMove={handleMouseMove}
-              onMouseUp={handleMouseUp}
-              onMouseLeave={handleMouseUp}
-              onTouchStart={handleMouseDown}
-              onTouchMove={handleMouseMove}
-              onTouchEnd={handleMouseUp}
+              className="absolute inset-0 h-full w-full cursor-crosshair touch-none"
+              onMouseDown={handlePointerDown}
+              onMouseMove={handlePointerMove}
+              onMouseUp={handlePointerUp}
+              onMouseLeave={handlePointerUp}
+              onTouchStart={handlePointerDown}
+              onTouchMove={handlePointerMove}
+              onTouchEnd={handlePointerUp}
             />
           </div>
 
@@ -366,19 +471,25 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
             <div className="flex gap-2">
               <button
                 onClick={handleUndo}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:bg-card transition-colors"
+                disabled={drawingHistory.length === 0}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card disabled:opacity-40"
               >
                 Undo
               </button>
               <button
-                onClick={handleClear}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:bg-card transition-colors"
+                onClick={clearMask}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card"
               >
                 Clear
               </button>
               <button
-                onClick={handleNewImage}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:bg-card transition-colors"
+                onClick={() => {
+                  setImage(null);
+                  setBeforeUrl("");
+                  setError(null);
+                  clearMask();
+                }}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card"
               >
                 New Image
               </button>
@@ -388,7 +499,7 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
           <button
             onClick={handleRemoveObject}
             disabled={loading || dailyLeft <= 0}
-            className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:opacity-50 disabled:cursor-not-allowed"
+            className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? (
               <span className="flex items-center justify-center gap-2">
@@ -396,32 +507,14 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                AI is removing objects...
+                Removing…
               </span>
             ) : (
               "Remove Objects"
             )}
           </button>
 
-          {error && (
-            <div className="mt-3 rounded-lg bg-red-50 p-3 text-center">
-              <p className="text-sm text-red-600">{error}</p>
-              {noApiKey && (
-                <p className="mt-1 text-xs text-red-400">
-                  Set up Replicate API key to enable AI removal. See README for instructions.
-                </p>
-              )}
-            </div>
-          )}
-
-          <div className="mt-3 flex items-center justify-between text-xs text-muted">
-            <span className="rounded-full bg-success/10 px-2 py-0.5 font-medium text-success">
-              Free today {dailyLeft} / 2
-            </span>
-            {dailyLeft <= 0 && (
-              <span className="text-warning">Sign in for 2 more free edits</span>
-            )}
-          </div>
+          {errorBanner}
         </div>
       )}
     </div>
