@@ -22,11 +22,10 @@ const featureSections = [
     tag: "background people remover",
     title: "Background People Remover",
     description:
-      "The background people remover clears photobombers, tourists, and background pedestrians from your photo while the subject stays crisp. Brush every unwanted person — even clusters of them — and the AI fills in sky, water, wall, or sidewalk in their place. Great for travel shots, venue photography, and candid portraits.",
+      "Clear photobombers, tourists, and background pedestrians while your subject stays crisp — the AI fills in sky, water, wall, or sidewalk.",
     bullets: [
       "Single photobombers behind your subject",
       "Dense tourist and concert crowds",
-      "Pedestrians and onlookers along the street",
     ],
     ctaLabel: "Try Background People Remover free",
     ctaHref: hrefForDemoTab("People"),
@@ -37,11 +36,10 @@ const featureSections = [
     tag: "ai object remover",
     title: "AI Object Remover",
     description:
-      "An AI object remover erases any unwanted object from a photo in seconds. Paint over the item — a trash can, power line, parked car, or dropped cable — and MagicRemover predicts the pixels that belong behind it, stitching a realistic background back together.",
+      "Paint over clutter — cables, trash, parked cars — and MagicRemover rebuilds the background behind it.",
     bullets: [
-      "Street clutter, cables, and construction debris",
-      "Dropped gear, bags, and random foreground objects",
-      "Parked vehicles, traffic cones, and signage posts",
+      "Street clutter, cables, and debris",
+      "Parked vehicles and signage posts",
     ],
     ctaLabel: "Try AI Object Remover free",
     ctaHref: hrefForDemoTab("Object"),
@@ -52,11 +50,10 @@ const featureSections = [
     tag: "remove text from image",
     title: "Remove Text from Image",
     description:
-      "MagicRemover lets you remove text from any image — date stamps, subtitles, captions, meme text, and burned-in watermark phrases. The AI recovers the pixels underneath so the original framing and subject stay intact. Perfect for cleaning screenshots, scanned memorabilia, and dated family snapshots.",
+      "Erase date stamps, captions, subtitles, and burned-in phrases while keeping the original framing.",
     bullets: [
       "Camera date and timestamp overlays",
       "Subtitles, captions, and meme typography",
-      "Copyright notices and attribution strips",
     ],
     ctaLabel: "Try Remove Text from Image free",
     ctaHref: hrefForDemoTab("Text"),
@@ -67,11 +64,10 @@ const featureSections = [
     tag: "remove watermark from photo",
     title: "Remove Watermark from Photo",
     description:
-      "MagicRemover lets you remove the watermark from any photo — copyright stamps, diagonal overlays, artist signatures, and burned-in logos. The AI inpainting model reconstructs the background texture — sky, wall, foliage — so the final photo looks untouched. Only remove watermarks from images you have the right to edit.",
+      "Scrub copyright stamps, diagonal overlays, and signatures from photos you have the right to edit.",
     bullets: [
       "Diagonal text watermarks and © marks",
       "Corner studio signatures and stamps",
-      "Semi-transparent overlays across full images",
     ],
     ctaLabel: "Try Remove Watermark from Photo free",
     ctaHref: hrefForDemoTab("Watermark"),
@@ -79,31 +75,15 @@ const featureSections = [
     afterImage: "/cases/gemini-watermark-remover-after.webp",
   },
   {
-    tag: "logo remover",
-    title: "Logo Remover",
+    tag: "logo and sticker remover",
+    title: "Logo & Sticker Remover",
     description:
-      "The logo remover tool cleans brand marks, TV bugs, and sponsor patches off photos. It works on clothing, packaging, storefronts, and broadcast stills — ideal for product mockups, royalty-free asset cleanup, and design previews where brand associations must be removed.",
+      "Wipe brand marks, TV bugs, and sticker-like overlays. The demo shows a logo cleanup — upload your own screenshot for stickers and emoji.",
     bullets: [
-      "T-shirt, hat, and jersey logos",
-      "Live broadcast TV station bugs and tickers",
-      "Billboards, storefronts, and packaging brand marks",
+      "Clothing, packaging, and broadcast logos",
+      "Stickers, emoji, and social overlays",
     ],
-    ctaLabel: "Try Logo Remover free",
-    ctaHref: hrefForDemoTab("Sticker"),
-    beforeImage: "/cases/logo-remover-before.webp",
-    afterImage: "/cases/logo-remover-after.webp",
-  },
-  {
-    tag: "sticker remover",
-    title: "Sticker & Emoji Remover",
-    description:
-      "Brush over sticker-like overlays the same way you erase logos — Instagram stickers, Snapchat graphics, emoji, and censor bars. The demo gallery currently shows a logo cleanup example; upload your own screenshot for stickers and emoji.",
-    bullets: [
-      "Instagram, Snapchat, and TikTok stickers",
-      "Emoji reactions pasted over faces",
-      "Chat bubble balloons and message overlays",
-    ],
-    ctaLabel: "Try Sticker & Emoji Remover free",
+    ctaLabel: "Try Logo & Sticker Remover free",
     ctaHref: hrefForDemoTab("Sticker"),
     beforeImage: "/cases/logo-remover-before.webp",
     afterImage: "/cases/logo-remover-after.webp",

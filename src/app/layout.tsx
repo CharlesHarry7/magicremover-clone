@@ -67,10 +67,7 @@ export const metadata: Metadata = {
     index: true,
     follow: true,
   },
-  icons: {
-    icon: "/logo.webp",
-    apple: "/logo.webp",
-  },
+  // app/icon.png, app/apple-icon.png, and app/favicon.ico are generated from the brand logo.
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {

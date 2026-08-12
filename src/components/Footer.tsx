@@ -1,6 +1,7 @@
-import Link from "next/link";
 import Image from "next/image";
+import Link from "next/link";
 
+import HashNavLink from "@/components/HashNavLink";
 import { Separator } from "@/components/ui/separator";
 import { hrefForDemoTab } from "@/lib/demo-tabs";
 
@@ -42,12 +43,7 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {allTools.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
+                  <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>
               ))}
             </ul>
@@ -58,12 +54,7 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {guides.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
+                  <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>
               ))}
             </ul>
@@ -74,12 +65,7 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {company.map((link) => (
                 <li key={link.label}>
-                  <Link
-                    href={link.href}
-                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
-                  >
-                    {link.label}
-                  </Link>
+                  <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>
               ))}
             </ul>

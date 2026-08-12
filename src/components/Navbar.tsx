@@ -15,6 +15,7 @@ import {
   SheetTitle,
   SheetTrigger,
 } from "@/components/ui/sheet";
+import { handleSamePageHashNav } from "@/lib/scroll-to-id";
 
 const navLinks = [
   { href: "/#try", label: "Object Remover" },
@@ -24,6 +25,14 @@ const navLinks = [
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
+
+  const onHashLinkClick = (
+    href: string,
+    event: React.MouseEvent<HTMLElement>
+  ) => {
+    const handled = handleSamePageHashNav(href, event);
+    if (handled) setMobileOpen(false);
+  };
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
@@ -48,6 +57,7 @@ export default function Navbar() {
               nativeButton={false}
               render={<Link href={link.href} />}
               className="text-muted-foreground"
+              onClick={(e) => onHashLinkClick(link.href, e)}
             >
               {link.label}
             </Button>
@@ -55,7 +65,12 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <Button size="sm" nativeButton={false} render={<Link href="/#try" />}>
+          <Button
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/#try" />}
+            onClick={(e) => onHashLinkClick("/#try", e)}
+          >
             Try free
           </Button>
         </div>
@@ -85,7 +100,9 @@ export default function Navbar() {
                 />
                 MagicRemover
               </SheetTitle>
-              <SheetDescription>Site navigation</SheetDescription>
+              <SheetDescription className="sr-only">
+                Site navigation
+              </SheetDescription>
             </SheetHeader>
             <Separator />
             <div className="flex flex-col gap-1 px-2">
@@ -96,7 +113,10 @@ export default function Navbar() {
                   className="justify-start text-muted-foreground"
                   nativeButton={false}
                   render={<Link href={link.href} />}
-                  onClick={() => setMobileOpen(false)}
+                  onClick={(e) => {
+                    onHashLinkClick(link.href, e);
+                    setMobileOpen(false);
+                  }}
                 >
                   {link.label}
                 </Button>
@@ -107,7 +127,10 @@ export default function Navbar() {
               <Button
                 nativeButton={false}
                 render={<Link href="/#try" />}
-                onClick={() => setMobileOpen(false)}
+                onClick={(e) => {
+                  onHashLinkClick("/#try", e);
+                  setMobileOpen(false);
+                }}
               >
                 Try free
               </Button>

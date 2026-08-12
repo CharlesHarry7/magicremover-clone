@@ -16,7 +16,7 @@ const faqs = [
   },
   {
     question: "Is it really free?",
-    answer: `Yes. There is no Stripe and no paywall here. The editor offers ${FREE_EDITS} demo edits per browser session (refresh resets the counter). No account is required.`,
+    answer: `Yes. There is no paywall here. The editor offers ${FREE_EDITS} demo edits per browser session (refresh resets the counter). No account is required.`,
   },
   {
     question: "How many photos can I edit?",
@@ -53,14 +53,31 @@ const faqs = [
   },
 ];
 
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.answer,
+    },
+  })),
+};
+
 export default function FAQ() {
   return (
     <section className="px-4 py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="mx-auto max-w-3xl">
         <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">FAQ</h2>
-        <h3 className="mb-10 text-center text-lg text-muted-foreground">
+        <p className="mb-10 text-center text-lg text-muted-foreground">
           Straight answers about this free remover.
-        </h3>
+        </p>
 
         <Accordion className="rounded-xl border border-border px-4">
           {faqs.map((faq, index) => (

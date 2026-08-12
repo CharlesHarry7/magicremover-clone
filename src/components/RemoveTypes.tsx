@@ -1,4 +1,3 @@
-import Link from "next/link";
 import {
   EraserIcon,
   ImageOffIcon,
@@ -9,6 +8,7 @@ import {
   UsersIcon,
 } from "lucide-react";
 
+import HashNavLink from "@/components/HashNavLink";
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
 import { hrefForDemoTab, type DemoTab } from "@/lib/demo-tabs";
 
@@ -81,10 +81,10 @@ export default function RemoveTypes() {
           {removeTypes.map((item) => {
             const Icon = item.icon;
             return (
-              <Link
+              <HashNavLink
                 key={item.title}
                 href={hrefForDemoTab(item.tab)}
-                className="group"
+                className="group block text-inherit hover:text-inherit"
               >
                 <Card className="h-full transition-all hover:ring-primary/30">
                   <CardContent>
@@ -99,7 +99,7 @@ export default function RemoveTypes() {
                     </CardDescription>
                   </CardContent>
                 </Card>
-              </Link>
+              </HashNavLink>
             );
           })}
         </div>

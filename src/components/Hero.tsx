@@ -88,14 +88,18 @@ export default function Hero() {
   }, []);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const fromQuery = demoTabFromSlug(params.get("tab"));
-    if (!fromQuery) return;
-    // Defer so the effect only schedules an update (react-hooks/set-state-in-effect).
-    queueMicrotask(() => {
-      setActiveTab(fromQuery);
-      setMode("demo");
-    });
+    const applyTabFromUrl = () => {
+      const params = new URLSearchParams(window.location.search);
+      const fromQuery = demoTabFromSlug(params.get("tab"));
+      if (!fromQuery) return;
+      queueMicrotask(() => {
+        setActiveTab(fromQuery);
+        setMode("demo");
+      });
+    };
+    applyTabFromUrl();
+    window.addEventListener("popstate", applyTabFromUrl);
+    return () => window.removeEventListener("popstate", applyTabFromUrl);
   }, []);
 
   useEffect(() => {

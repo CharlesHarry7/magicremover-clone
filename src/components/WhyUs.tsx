@@ -1,20 +1,19 @@
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { FREE_EDITS } from "@/lib/remove-limits";
 
 const benefits = [
   {
     title: "Free demo",
-    description:
-      "Two demo edits per browser session. No credit card, no trial wall, no Stripe.",
+    description: `${FREE_EDITS} demo edits per browser session — no credit card and no trial wall.`,
   },
   {
     title: "No signup",
-    description:
-      "Open the page and start brushing. There is no account system in this clone.",
+    description: "Open the page and start brushing. No account required.",
   },
   {
     title: "Honest failures",
     description:
-      "Missing config returns HTTP 503. Timeouts and oversized payloads return clear codes — never a fake success.",
+      "If removal isn’t configured or a request times out, you get a clear error — never a fake success image.",
   },
   {
     title: "Privacy-first",
@@ -30,9 +29,9 @@ export default function WhyUs() {
         <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
           Why MagicRemover
         </h2>
-        <h3 className="mb-10 text-center text-lg text-muted-foreground">
+        <p className="mb-10 text-center text-lg text-muted-foreground">
           Free, fast, and refreshingly honest.
-        </h3>
+        </p>
 
         <div className="grid gap-6 sm:grid-cols-2">
           {benefits.map((item) => (

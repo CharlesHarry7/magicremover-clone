@@ -964,8 +964,13 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
           : "magicremover-result.png";
 
       await saveBlobWithAnchor(blob, filename);
+      const appleTouch =
+        /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+        (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
       setDownloadNote(
-        "Download started. On iPhone/iPad, use Share or long-press the After image if the file doesn’t appear."
+        appleTouch
+          ? "Download started. If the file doesn’t appear, use Share or long-press the After image."
+          : "Download started."
       );
     } catch (err) {
       const message =
