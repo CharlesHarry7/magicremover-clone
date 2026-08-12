@@ -2,6 +2,13 @@
 
 import { useRef, useState, useCallback, useEffect } from "react";
 import Image from "next/image";
+import { AlertCircleIcon, Loader2Icon, UploadIcon } from "lucide-react";
+
+import { Alert, AlertDescription } from "@/components/ui/alert";
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Label } from "@/components/ui/label";
+import { Slider } from "@/components/ui/slider";
 
 interface ImageEditorProps {
   onResult?: (resultUrl: string) => void;
@@ -37,71 +44,67 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     setDrawingHistory([]);
   }, []);
 
-  const handleFileUpload = useCallback(
-    (file: File) => {
-      if (!file.type.startsWith("image/")) {
-        setError("Please upload a JPG or PNG image.");
-        return;
-      }
-      if (file.size > 10 * 1024 * 1024) {
-        setError("File size must be under 10 MB.");
-        return;
-      }
+  const handleFileUpload = useCallback((file: File) => {
+    if (!file.type.startsWith("image/")) {
+      setError("Please upload a JPG or PNG image.");
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      setError("File size must be under 10 MB.");
+      return;
+    }
 
-      setError(null);
-      setResultUrl(null);
-      setMaskPreviewUrl("");
+    setError(null);
+    setResultUrl(null);
+    setMaskPreviewUrl("");
 
-      const reader = new FileReader();
-      reader.onload = (e) => {
-        const dataUrl = e.target?.result as string;
-        const img = new window.Image();
-        img.onload = () => {
-          let w = img.width;
-          let h = img.height;
-          const maxDim = 1536;
-          if (w > maxDim || h > maxDim) {
-            const ratio = Math.min(maxDim / w, maxDim / h);
-            w = Math.round(w * ratio);
-            h = Math.round(h * ratio);
-          }
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      const dataUrl = e.target?.result as string;
+      const img = new window.Image();
+      img.onload = () => {
+        let w = img.width;
+        let h = img.height;
+        const maxDim = 1536;
+        if (w > maxDim || h > maxDim) {
+          const ratio = Math.min(maxDim / w, maxDim / h);
+          w = Math.round(w * ratio);
+          h = Math.round(h * ratio);
+        }
 
-          const canvas = canvasRef.current;
-          const maskCanvas = maskCanvasRef.current;
-          if (!canvas || !maskCanvas) return;
+        const canvas = canvasRef.current;
+        const maskCanvas = maskCanvasRef.current;
+        if (!canvas || !maskCanvas) return;
 
-          canvas.width = w;
-          canvas.height = h;
-          maskCanvas.width = w;
-          maskCanvas.height = h;
-          setCanvasSize({ w, h });
+        canvas.width = w;
+        canvas.height = h;
+        maskCanvas.width = w;
+        maskCanvas.height = h;
+        setCanvasSize({ w, h });
 
-          const ctx = canvas.getContext("2d");
-          if (ctx) {
-            ctx.clearRect(0, 0, w, h);
-            ctx.drawImage(img, 0, 0, w, h);
-          }
+        const ctx = canvas.getContext("2d");
+        if (ctx) {
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(img, 0, 0, w, h);
+        }
 
-          const maskCtx = maskCanvas.getContext("2d");
-          if (maskCtx) {
-            maskCtx.clearRect(0, 0, w, h);
-          }
+        const maskCtx = maskCanvas.getContext("2d");
+        if (maskCtx) {
+          maskCtx.clearRect(0, 0, w, h);
+        }
 
-          setDrawingHistory([]);
-          setImage(img);
-          setBeforeUrl(dataUrl);
-        };
-        img.src = dataUrl;
+        setDrawingHistory([]);
+        setImage(img);
+        setBeforeUrl(dataUrl);
       };
-      reader.readAsDataURL(file);
-    },
-    []
-  );
+      img.src = dataUrl;
+    };
+    reader.readAsDataURL(file);
+  }, []);
 
   useEffect(() => {
     if (!initialFile) return;
     let cancelled = false;
-    // Defer so we don't setState synchronously inside the effect body.
     queueMicrotask(() => {
       if (!cancelled) handleFileUpload(initialFile);
     });
@@ -222,7 +225,9 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, out.width, out.height);
 
-    const src = maskCanvas.getContext("2d")!.getImageData(0, 0, maskCanvas.width, maskCanvas.height);
+    const src = maskCanvas
+      .getContext("2d")!
+      .getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     const dst = ctx.getImageData(0, 0, out.width, out.height);
 
     let hasMask = false;
@@ -313,7 +318,6 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       document.body.removeChild(a);
       URL.revokeObjectURL(objectUrl);
     } catch {
-      // Cross-origin fallback: open in a new tab
       window.open(resultUrl, "_blank", "noopener,noreferrer");
     }
   }, [resultUrl]);
@@ -327,18 +331,22 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
   }, [clearMask]);
 
   const errorBanner = error ? (
-    <p className="mt-3 rounded-lg border border-red-200 bg-red-50 px-3 py-2 text-center text-sm text-red-600">
-      {error}
-    </p>
+    <Alert variant="destructive" className="mt-3">
+      <AlertCircleIcon />
+      <AlertDescription>{error}</AlertDescription>
+    </Alert>
   ) : null;
 
   return (
     <div id="editor" className="mx-auto max-w-4xl scroll-mt-24">
-      <div className="mb-3 flex items-center justify-between text-xs text-muted">
+      <div className="mb-3 flex items-center justify-between text-xs text-muted-foreground">
         <span>Brush the area to erase, then remove</span>
-        <span className="rounded-full bg-success/10 px-2 py-0.5 font-medium text-success">
+        <Badge
+          variant="secondary"
+          className="bg-success/10 text-success hover:bg-success/10"
+        >
           Free today {dailyLeft} / {FREE_EDITS}
-        </span>
+        </Badge>
       </div>
 
       {!image ? (
@@ -348,11 +356,11 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           onDragOver={(e) => e.preventDefault()}
           onClick={() => fileInputRef.current?.click()}
         >
-          <svg className="mx-auto mb-3 h-12 w-12 text-muted/40" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-          </svg>
+          <UploadIcon className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
           <p className="mb-1 text-sm font-medium">Drop a photo here</p>
-          <p className="text-xs text-muted">or click to browse · JPG / PNG · up to ~10 MB</p>
+          <p className="text-xs text-muted-foreground">
+            or click to browse · JPG / PNG · up to ~10 MB
+          </p>
           <input
             ref={fileInputRef}
             type="file"
@@ -368,7 +376,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       ) : resultUrl ? (
         <div>
           <div className="mb-4 flex flex-col gap-4 sm:flex-row">
-            <div className="relative flex-1 overflow-hidden rounded-xl bg-gray-100">
+            <div className="relative flex-1 overflow-hidden rounded-xl bg-muted">
               <Image
                 src={beforeUrl}
                 alt="Before"
@@ -387,9 +395,11 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                   unoptimized
                 />
               )}
-              <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">Before</span>
+              <Badge className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60">
+                Before
+              </Badge>
             </div>
-            <div className="relative flex-1 overflow-hidden rounded-xl bg-gray-100">
+            <div className="relative flex-1 overflow-hidden rounded-xl bg-muted">
               <Image
                 src={resultUrl}
                 alt="After"
@@ -398,45 +408,43 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                 className="h-full w-full object-contain"
                 unoptimized
               />
-              <span className="absolute left-2 top-2 rounded bg-success/80 px-2 py-0.5 text-xs text-white">After</span>
+              <Badge className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80">
+                After
+              </Badge>
             </div>
           </div>
           <div className="flex flex-wrap justify-center gap-3">
-            <button
-              onClick={handleDownload}
-              className="rounded-lg bg-primary px-6 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-            >
+            <Button size="lg" onClick={handleDownload}>
               Download Result
-            </button>
-            <button
-              onClick={handleNewImage}
-              className="rounded-lg border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-card"
-            >
-              Edit Again
-            </button>
-            <button
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
               onClick={() => {
-                setImage(null);
                 setResultUrl(null);
-                setBeforeUrl("");
                 setMaskPreviewUrl("");
                 setError(null);
                 clearMask();
               }}
-              className="rounded-lg border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-card"
             >
+              Edit Again
+            </Button>
+            <Button size="lg" variant="outline" onClick={handleNewImage}>
               New Image
-            </button>
+            </Button>
           </div>
           {errorBanner}
         </div>
       ) : (
         <div>
           <div
-            className="relative mx-auto mb-4 max-h-[500px] max-w-full overflow-hidden rounded-xl bg-gray-100"
+            className="relative mx-auto mb-4 max-h-[500px] max-w-full overflow-hidden rounded-xl bg-muted"
             style={
               canvasSize.w
-                ? { aspectRatio: `${canvasSize.w} / ${canvasSize.h}`, width: "min(100%, 800px)" }
+                ? {
+                    aspectRatio: `${canvasSize.w} / ${canvasSize.h}`,
+                    width: "min(100%, 800px)",
+                  }
                 : undefined
             }
           >
@@ -455,63 +463,66 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           </div>
 
           <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-            <div className="flex items-center gap-2">
-              <span className="text-xs text-muted">Brush size</span>
-              <input
-                type="range"
-                min="5"
-                max="80"
-                value={brushSize}
-                onChange={(e) => setBrushSize(Number(e.target.value))}
-                className="h-1.5 w-24 accent-primary"
+            <div className="flex min-w-[12rem] flex-1 items-center gap-3">
+              <Label htmlFor="brush-size" className="text-xs text-muted-foreground">
+                Brush size
+              </Label>
+              <Slider
+                id="brush-size"
+                className="max-w-[10rem]"
+                min={5}
+                max={80}
+                step={1}
+                value={[brushSize]}
+                onValueChange={(value) => {
+                  const next = Array.isArray(value) ? value[0] : value;
+                  if (typeof next === "number") setBrushSize(next);
+                }}
               />
-              <span className="text-xs font-medium">{brushSize}px</span>
+              <span className="text-xs font-medium tabular-nums">{brushSize}px</span>
             </div>
             <div className="flex gap-2">
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleUndo}
                 disabled={drawingHistory.length === 0}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card disabled:opacity-40"
               >
                 Undo
-              </button>
-              <button
-                onClick={clearMask}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card"
-              >
+              </Button>
+              <Button variant="outline" size="sm" onClick={clearMask}>
                 Clear
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => {
                   setImage(null);
                   setBeforeUrl("");
                   setError(null);
                   clearMask();
                 }}
-                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted transition-colors hover:bg-card"
               >
                 New Image
-              </button>
+              </Button>
             </div>
           </div>
 
-          <button
+          <Button
+            className="w-full"
+            size="lg"
             onClick={handleRemoveObject}
             disabled={loading || dailyLeft <= 0}
-            className="w-full rounded-lg bg-primary px-6 py-3 text-sm font-semibold text-white transition-colors hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-50"
           >
             {loading ? (
-              <span className="flex items-center justify-center gap-2">
-                <svg className="h-4 w-4 animate-spin" fill="none" viewBox="0 0 24 24">
-                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
-                </svg>
+              <>
+                <Loader2Icon className="animate-spin" />
                 Removing…
-              </span>
+              </>
             ) : (
               "Remove Objects"
             )}
-          </button>
+          </Button>
 
           {errorBanner}
         </div>

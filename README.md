@@ -2,7 +2,7 @@
 
 Free AI object remover — upload a photo, brush the area to erase, run AI inpainting, compare before/after, and download the result.
 
-Built with Next.js and deployed to Cloudflare Workers via OpenNext.
+Built with **Next.js + Tailwind CSS + shadcn/ui**, deployed to Cloudflare Workers via OpenNext.
 
 ## Features
 

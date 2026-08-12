@@ -1,6 +1,8 @@
 import Link from "next/link";
 import Image from "next/image";
 
+import { Separator } from "@/components/ui/separator";
+
 const allTools = [
   { label: "Remove People from Photo", href: "#try" },
   { label: "Remove Watermark from Photo", href: "#try" },
@@ -16,7 +18,10 @@ const allTools = [
 
 const guides = [
   { label: "Blog", href: "/blog" },
-  { label: "How to Remove People from a Photo", href: "/blog/how-to-remove-people-from-a-photo" },
+  {
+    label: "How to Remove People from a Photo",
+    href: "/blog/how-to-remove-people-from-a-photo",
+  },
 ];
 
 const company = [
@@ -36,7 +41,10 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {allTools.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-foreground transition-colors">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -49,7 +57,10 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {guides.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-foreground transition-colors">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -62,7 +73,10 @@ export default function Footer() {
             <ul className="space-y-1.5">
               {company.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted hover:text-foreground transition-colors">
+                  <Link
+                    href={link.href}
+                    className="text-sm text-muted-foreground transition-colors hover:text-foreground"
+                  >
                     {link.label}
                   </Link>
                 </li>
@@ -71,28 +85,44 @@ export default function Footer() {
           </div>
 
           <div>
-            <Link href="/" className="flex items-center gap-2 mb-3">
-              <Image src="/logo.webp" alt="MagicRemover" width={28} height={28} className="h-7 w-7" />
+            <Link href="/" className="mb-3 flex items-center gap-2">
+              <Image
+                src="/logo.webp"
+                alt="MagicRemover"
+                width={28}
+                height={28}
+                className="h-7 w-7"
+              />
               <span className="font-bold">MagicRemover</span>
             </Link>
-            <p className="text-xs text-muted mb-3">
+            <p className="mb-3 text-xs text-muted-foreground">
               Powered by{" "}
-              <Link href="https://apimodels.app" className="text-primary hover:underline" target="_blank">
+              <Link
+                href="https://apimodels.app"
+                className="text-primary hover:underline"
+                target="_blank"
+              >
                 apimodels.app
               </Link>{" "}
               — a unified AI image generation API
             </p>
-            <p className="text-xs text-muted">
+            <p className="text-xs text-muted-foreground">
               Also from us: CoverHook —{" "}
-              <Link href="https://coverhook.com" className="text-primary hover:underline" target="_blank">
+              <Link
+                href="https://coverhook.com"
+                className="text-primary hover:underline"
+                target="_blank"
+              >
                 AI social media cover generator
               </Link>
             </p>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-border pt-6 text-center text-xs text-muted">
-          2 free removes a day, plus 2 more when you sign in · Results retained 24 hours · We don&apos;t store your originals.
+        <Separator className="mt-10" />
+        <div className="pt-6 text-center text-xs text-muted-foreground">
+          2 free removes a day, plus 2 more when you sign in · Results retained
+          24 hours · We don&apos;t store your originals.
         </div>
       </div>
     </footer>

@@ -1,5 +1,9 @@
 import Link from "next/link";
 import Image from "next/image";
+import { CheckIcon } from "lucide-react";
+
+import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface FeatureDetailProps {
   tag: string;
@@ -27,7 +31,7 @@ export default function FeatureDetail({
   const imageSection = (
     <div className="flex-1">
       <div className="flex flex-col gap-3 sm:flex-row">
-        <div className="relative flex-1 overflow-hidden rounded-xl bg-gray-100">
+        <div className="relative flex-1 overflow-hidden rounded-xl bg-muted">
           <Image
             src={beforeImage}
             alt={`${title} — before`}
@@ -35,9 +39,11 @@ export default function FeatureDetail({
             height={450}
             className="h-full w-full object-cover"
           />
-          <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">Before</span>
+          <Badge className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60">
+            Before
+          </Badge>
         </div>
-        <div className="relative flex-1 overflow-hidden rounded-xl bg-gray-100">
+        <div className="relative flex-1 overflow-hidden rounded-xl bg-muted">
           <Image
             src={afterImage}
             alt={`${title} — after`}
@@ -45,7 +51,9 @@ export default function FeatureDetail({
             height={450}
             className="h-full w-full object-cover"
           />
-          <span className="absolute left-2 top-2 rounded bg-success/80 px-2 py-0.5 text-xs text-white">After</span>
+          <Badge className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80">
+            After
+          </Badge>
         </div>
       </div>
     </div>
@@ -54,30 +62,37 @@ export default function FeatureDetail({
   return (
     <section className="px-4 py-12">
       <div className="mx-auto max-w-6xl">
-        <div className={`flex flex-col gap-8 lg:flex-row lg:items-center ${reverse ? "lg:flex-row-reverse" : ""}`}>
+        <div
+          className={`flex flex-col gap-8 lg:flex-row lg:items-center ${
+            reverse ? "lg:flex-row-reverse" : ""
+          }`}
+        >
           {imageSection}
           <div className="flex-1">
-            <span className="mb-3 inline-block rounded-full bg-primary-light px-3 py-1 text-xs font-medium text-primary">
+            <Badge
+              variant="secondary"
+              className="mb-3 bg-primary-light text-primary hover:bg-primary-light"
+            >
               {tag}
-            </span>
+            </Badge>
             <h3 className="mb-3 text-2xl font-bold">{title}</h3>
-            <p className="mb-4 text-sm leading-relaxed text-muted">{description}</p>
+            <p className="mb-4 text-sm leading-relaxed text-muted-foreground">
+              {description}
+            </p>
             <ul className="mb-5 space-y-2">
               {bullets.map((bullet) => (
-                <li key={bullet} className="flex items-start gap-2 text-sm text-muted">
-                  <svg className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                  </svg>
+                <li
+                  key={bullet}
+                  className="flex items-start gap-2 text-sm text-muted-foreground"
+                >
+                  <CheckIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-success" />
                   {bullet}
                 </li>
               ))}
             </ul>
-            <Link
-              href={ctaHref}
-              className="inline-flex items-center gap-1 rounded-lg bg-primary px-5 py-2.5 text-sm font-semibold text-white transition-colors hover:bg-primary-hover"
-            >
+            <Button size="lg" render={<Link href={ctaHref} />}>
               {ctaLabel} →
-            </Link>
+            </Button>
           </div>
         </div>
       </div>

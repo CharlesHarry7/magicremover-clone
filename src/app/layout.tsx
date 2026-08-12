@@ -14,7 +14,8 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Free AI Object Remover — No Signup, No Watermark | MagicRemover",
-  description: "Erase anything from your photos in seconds. Brush any object, person, text, or watermark out of a photo — no signup, no watermark.",
+  description:
+    "Erase anything from your photos in seconds. Brush any object, person, text, or watermark out of a photo — no signup, no watermark.",
 };
 
 export default function RootLayout({ children }: LayoutProps<"/">) {
@@ -23,7 +24,7 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="flex min-h-full flex-col font-sans">{children}</body>
     </html>
   );
 }
