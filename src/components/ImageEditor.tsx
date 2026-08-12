@@ -89,9 +89,9 @@ function BeforeAfterCompare({
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
-    const sync = () => setWidth(el.clientWidth);
-    sync();
-    const ro = new ResizeObserver(sync);
+    const ro = new ResizeObserver((entries) => {
+      setWidth(entries[0]?.contentRect.width ?? 0);
+    });
     ro.observe(el);
     return () => ro.disconnect();
   }, []);
@@ -99,25 +99,29 @@ function BeforeAfterCompare({
   useEffect(() => {
     const onMove = (e: PointerEvent) => {
       if (!dragging.current) return;
+      e.preventDefault();
       updateFromClientX(e.clientX);
     };
     const onUp = () => {
       dragging.current = false;
     };
-    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointermove", onMove, { passive: false });
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
     };
   }, [updateFromClientX]);
 
   return (
     <div
       ref={containerRef}
-      className="relative mx-auto aspect-[4/3] w-full max-w-[800px] overflow-hidden rounded-xl bg-muted select-none"
+      className="relative mx-auto aspect-[4/3] w-full max-w-[800px] touch-none overflow-hidden rounded-xl bg-muted select-none"
       onPointerDown={(e) => {
         if ((e.target as HTMLElement).closest("[data-compare-handle]")) return;
+        e.preventDefault();
         dragging.current = true;
         updateFromClientX(e.clientX);
       }}
@@ -190,12 +194,18 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const isDrawingRef = useRef(false);
+  const activePointerIdRef = useRef<number | null>(null);
 
   const [image, setImage] = useState<HTMLImageElement | null>(null);
-  const [brushSize, setBrushSize] = useState(30);
+  const [brushSize, setBrushSize] = useState(() => {
+    if (typeof window === "undefined") return 30;
+    return window.matchMedia?.("(pointer: coarse)").matches ? 40 : 30;
+  });
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [downloadNote, setDownloadNote] = useState<string | null>(null);
   const [beforeUrl, setBeforeUrl] = useState<string>("");
   const [maskPreviewUrl, setMaskPreviewUrl] = useState<string>("");
   const [dailyLeft, setDailyLeft] = useState(FREE_EDITS);
@@ -388,22 +398,33 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     });
   }, []);
 
+  const endStroke = useCallback(() => {
+    if (!isDrawingRef.current) return;
+    isDrawingRef.current = false;
+    activePointerIdRef.current = null;
+    lastPointRef.current = null;
+    setHasMask(maskHasPaint());
+  }, [maskHasPaint]);
+
   const handlePointerDown = useCallback(
-    (e: React.PointerEvent) => {
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
       if (!image || loading) return;
+      // One finger / primary pointer only — ignore extra touches.
+      if (activePointerIdRef.current !== null) return;
       e.preventDefault();
-      (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+      e.stopPropagation();
+      activePointerIdRef.current = e.pointerId;
+      try {
+        e.currentTarget.setPointerCapture(e.pointerId);
+      } catch {
+        // Some mobile WebViews reject capture; window listeners still help.
+      }
       pushHistory();
       isDrawingRef.current = true;
       const point = getCanvasCoords(e.clientX, e.clientY);
       lastPointRef.current = point;
       strokeBrush(point.x, point.y, null);
-    },
-    [image, loading, getCanvasCoords, strokeBrush, pushHistory]
-  );
 
-  const handlePointerMove = useCallback(
-    (e: React.PointerEvent) => {
       const stage = stageRef.current;
       if (stage) {
         const rect = stage.getBoundingClientRect();
@@ -412,21 +433,96 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           y: e.clientY - rect.top,
         });
       }
+    },
+    [image, loading, getCanvasCoords, strokeBrush, pushHistory]
+  );
 
+  const handlePointerMove = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (
+        activePointerIdRef.current !== null &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+
+      // Cursor preview only — active strokes are handled by window listeners
+      // so drawing continues when the finger slides off the canvas.
+      if (isDrawingRef.current) return;
+
+      const stage = stageRef.current;
+      if (stage) {
+        const rect = stage.getBoundingClientRect();
+        setCursorPos({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        });
+      }
+    },
+    []
+  );
+
+  const handlePointerUp = useCallback(
+    (e: React.PointerEvent<HTMLCanvasElement>) => {
+      if (
+        activePointerIdRef.current !== null &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+      try {
+        if (e.currentTarget.hasPointerCapture?.(e.pointerId)) {
+          e.currentTarget.releasePointerCapture(e.pointerId);
+        }
+      } catch {
+        // ignore
+      }
+      endStroke();
+    },
+    [endStroke]
+  );
+
+  // Keep drawing when the finger slides off the canvas (common on mobile).
+  useEffect(() => {
+    const onMove = (e: PointerEvent) => {
       if (!isDrawingRef.current) return;
+      if (
+        activePointerIdRef.current !== null &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
       e.preventDefault();
+      const stage = stageRef.current;
+      if (stage) {
+        const rect = stage.getBoundingClientRect();
+        setCursorPos({
+          x: e.clientX - rect.left,
+          y: e.clientY - rect.top,
+        });
+      }
       const point = getCanvasCoords(e.clientX, e.clientY);
       strokeBrush(point.x, point.y, lastPointRef.current);
       lastPointRef.current = point;
-    },
-    [getCanvasCoords, strokeBrush]
-  );
-
-  const handlePointerUp = useCallback(() => {
-    isDrawingRef.current = false;
-    lastPointRef.current = null;
-    setHasMask(maskHasPaint());
-  }, [maskHasPaint]);
+    };
+    const onUp = (e: PointerEvent) => {
+      if (
+        activePointerIdRef.current !== null &&
+        e.pointerId !== activePointerIdRef.current
+      ) {
+        return;
+      }
+      endStroke();
+    };
+    window.addEventListener("pointermove", onMove, { passive: false });
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
+    return () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+  }, [endStroke, getCanvasCoords, strokeBrush]);
 
   const handleUndo = useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
@@ -547,30 +643,97 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       setDailyLeft((prev) => prev - 1);
       onResult?.(data.result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Something went wrong");
+      if (err instanceof TypeError) {
+        setError(
+          "Network error talking to /api/remove-object. Check your connection and try again."
+        );
+      } else {
+        setError(err instanceof Error ? err.message : "Something went wrong");
+      }
     } finally {
       setLoading(false);
     }
   }, [image, dailyLeft, onResult, buildBinaryMaskDataUrl]);
 
+  const blobFromResult = useCallback(async (url: string) => {
+    if (url.startsWith("data:")) {
+      const res = await fetch(url);
+      if (!res.ok) throw new Error("Could not decode result image data.");
+      return res.blob();
+    }
+    const res = await fetch(url);
+    if (!res.ok) {
+      throw new Error(`Download failed (HTTP ${res.status}).`);
+    }
+    return res.blob();
+  }, []);
+
   const handleDownload = useCallback(async () => {
-    if (!resultUrl) return;
+    if (!resultUrl || downloading) return;
+    setDownloading(true);
+    setError(null);
+    setDownloadNote(null);
+
     try {
-      const res = await fetch(resultUrl);
-      if (!res.ok) throw new Error("Download failed");
-      const blob = await res.blob();
+      const blob = await blobFromResult(resultUrl);
+      const mime = blob.type || "image/png";
+      const filename = mime.includes("jpeg") || mime.includes("jpg")
+        ? "magicremover-result.jpg"
+        : "magicremover-result.png";
+      const file = new File([blob], filename, { type: mime });
+
+      const nav = navigator as Navigator & {
+        canShare?: (data: ShareData) => boolean;
+        share?: (data: ShareData) => Promise<void>;
+      };
+
+      // Mobile browsers (esp. iOS) often ignore <a download> for blobs —
+      // prefer the system share sheet when files can be shared.
+      if (nav.canShare?.({ files: [file] }) && nav.share) {
+        try {
+          await nav.share({
+            files: [file],
+            title: "MagicRemover result",
+          });
+          setDownloadNote("Opened the system share sheet — save the image from there.");
+          return;
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") {
+            setDownloadNote("Share canceled.");
+            return;
+          }
+          // Fall through to anchor download.
+        }
+      }
+
       const objectUrl = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = objectUrl;
-      a.download = "magicremover-result.png";
+      a.download = filename;
+      a.rel = "noopener";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(objectUrl);
-    } catch {
-      window.open(resultUrl, "_blank", "noopener,noreferrer");
+      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2500);
+      setDownloadNote(
+        "Download started. On some phones, use Share or long-press the After image if the file doesn’t appear."
+      );
+    } catch (err) {
+      const message =
+        err instanceof Error ? err.message : "Could not download the result.";
+      if (resultUrl.startsWith("data:")) {
+        setError(
+          `${message} Long-press the After image to save it on this device.`
+        );
+      } else {
+        setError(message);
+        window.open(resultUrl, "_blank", "noopener,noreferrer");
+        setDownloadNote("Opened the result in a new tab as a fallback.");
+      }
+    } finally {
+      setDownloading(false);
     }
-  }, [resultUrl]);
+  }, [resultUrl, downloading, blobFromResult]);
 
   const handleNewImage = useCallback(() => {
     setImage(null);
@@ -578,6 +741,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     setMaskPreviewUrl("");
     clearMask();
     setError(null);
+    setDownloadNote(null);
     setCursorPos(null);
   }, [clearMask]);
 
@@ -669,7 +833,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                 showMask={showMaskOnBefore}
               />
               <p className="mt-2 text-center text-xs text-muted-foreground">
-                Drag the handle to compare before and after
+                Drag or slide to compare before and after
               </p>
             </div>
           ) : (
@@ -714,28 +878,50 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           )}
 
           <div className="flex flex-wrap justify-center gap-3">
-            <Button size="lg" onClick={handleDownload}>
-              <DownloadIcon />
-              Download Result
+            <Button
+              size="lg"
+              className="min-h-11 min-w-[10rem]"
+              onClick={handleDownload}
+              disabled={downloading}
+            >
+              {downloading ? (
+                <Loader2Icon className="animate-spin" />
+              ) : (
+                <DownloadIcon />
+              )}
+              {downloading ? "Preparing…" : "Download / Share"}
             </Button>
             <Button
               size="lg"
               variant="outline"
+              className="min-h-11"
               onClick={() => {
                 setResultUrl(null);
                 setMaskPreviewUrl("");
                 setError(null);
+                setDownloadNote(null);
                 clearMask();
               }}
             >
               <RotateCcwIcon />
               Edit Again
             </Button>
-            <Button size="lg" variant="outline" onClick={handleNewImage}>
+            <Button
+              size="lg"
+              variant="outline"
+              className="min-h-11"
+              onClick={handleNewImage}
+            >
               <ImagePlusIcon />
               New Image
             </Button>
           </div>
+          {downloadNote ? (
+            <Alert className="mt-3">
+              <DownloadIcon />
+              <AlertDescription>{downloadNote}</AlertDescription>
+            </Alert>
+          ) : null}
           {errorBanner}
         </div>
       ) : (
@@ -743,7 +929,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           <div
             ref={stageRef}
             className={cn(
-              "relative mx-auto mb-4 max-h-[500px] max-w-full overflow-hidden rounded-xl bg-muted",
+              "relative mx-auto mb-4 max-h-[70vh] max-w-full touch-none overflow-hidden overscroll-none rounded-xl bg-muted",
               loading && "pointer-events-none opacity-80"
             )}
             style={
@@ -754,13 +940,25 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                   }
                 : undefined
             }
-            onPointerLeave={() => setCursorPos(null)}
+            onPointerLeave={(e) => {
+              // Keep the brush ring while an active stroke continues off-canvas.
+              if (isDrawingRef.current) return;
+              if (e.pointerType === "mouse") setCursorPos(null);
+            }}
           >
-            <canvas ref={canvasRef} className="absolute inset-0 h-full w-full" />
+            <canvas
+              ref={canvasRef}
+              className="absolute inset-0 h-full w-full touch-none"
+            />
             <canvas
               ref={maskCanvasRef}
               className="absolute inset-0 h-full w-full touch-none"
-              style={{ cursor: "none" }}
+              style={{
+                cursor: "none",
+                touchAction: "none",
+                WebkitUserSelect: "none",
+                userSelect: "none",
+              }}
               onPointerDown={handlePointerDown}
               onPointerMove={handlePointerMove}
               onPointerUp={handlePointerUp}
@@ -768,10 +966,10 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             />
             {cursorPos && !loading ? (
               <div
-                className="pointer-events-none absolute z-10 rounded-full border-2 border-red-500/80 bg-red-500/10 shadow-[0_0_0_1px_rgba(255,255,255,0.7)]"
+                className="pointer-events-none absolute z-10 rounded-full border-2 border-red-500/80 bg-red-500/15 shadow-[0_0_0_1px_rgba(255,255,255,0.7)]"
                 style={{
-                  width: brushPreviewPx,
-                  height: brushPreviewPx,
+                  width: Math.max(12, brushPreviewPx),
+                  height: Math.max(12, brushPreviewPx),
                   left: cursorPos.x,
                   top: cursorPos.y,
                   transform: "translate(-50%, -50%)",
@@ -789,7 +987,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
             ) : null}
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
+          <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-end sm:justify-between">
             <div className="flex min-w-[14rem] flex-1 flex-col gap-2">
               <div className="flex items-center gap-3">
                 <Label
@@ -800,7 +998,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                 </Label>
                 <Slider
                   id="brush-size"
-                  className="max-w-[12rem]"
+                  className="max-w-none flex-1 sm:max-w-[12rem]"
                   min={5}
                   max={80}
                   step={1}
@@ -814,11 +1012,12 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                   {brushSize}px
                 </span>
               </div>
-              <div className="flex gap-1">
+              <div className="flex flex-wrap gap-1">
                 {BRUSH_PRESETS.map((size) => (
                   <Button
                     key={size}
-                    size="xs"
+                    size="sm"
+                    className="min-h-9"
                     variant={brushSize === size ? "secondary" : "outline"}
                     onClick={() => setBrushSize(size)}
                   >
@@ -827,10 +1026,11 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
                 ))}
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2">
               <Button
                 variant="outline"
                 size="sm"
+                className="min-h-9"
                 onClick={handleUndo}
                 disabled={drawingHistory.length === 0 || loading}
               >
@@ -839,6 +1039,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
               <Button
                 variant="outline"
                 size="sm"
+                className="min-h-9"
                 onClick={clearMask}
                 disabled={!hasMask || loading}
               >
@@ -847,6 +1048,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
               <Button
                 variant="outline"
                 size="sm"
+                className="min-h-9"
                 disabled={loading}
                 onClick={() => {
                   setImage(null);
@@ -861,7 +1063,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           </div>
 
           <Button
-            className="w-full"
+            className="min-h-11 w-full"
             size="lg"
             onClick={handleRemoveObject}
             disabled={loading || dailyLeft <= 0 || !hasMask}
@@ -878,7 +1080,8 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
           {!hasMask && !loading ? (
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Paint a red mask over what to erase. Undo with Ctrl/⌘+Z.
+              Paint a red mask with your finger or mouse. Page scroll is locked
+              while drawing. Undo with Ctrl/⌘+Z on desktop.
             </p>
           ) : null}
 
