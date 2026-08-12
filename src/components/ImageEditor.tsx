@@ -34,7 +34,7 @@ function formatRemoveApiError(
   data: { error?: string; code?: string }
 ): string {
   const code = data.code;
-  if (code === "MISSING_API_KEY") {
+  if (code === "MISSING_API_KEY" || status === 503) {
     return (
       data.error ||
       "Object removal is not configured on the server (HTTP 503)."
@@ -58,7 +58,53 @@ function formatRemoveApiError(
       "Removal provider is rate-limiting requests. Try again shortly."
     );
   }
+  if (code === "INVALID_JSON" || code === "MISSING_FIELDS" || code === "INVALID_DATA_URL") {
+    return data.error || "Invalid remove request. Re-upload the photo and try again.";
+  }
+  if (code === "REPLICATE_AUTH" || code === "REPLICATE_ERROR" || code === "PREDICTION_FAILED") {
+    return data.error || "The removal provider failed this request. Try again.";
+  }
   return data.error || `Failed to process image (HTTP ${status})`;
+}
+
+async function readRemoveApiPayload(res: Response): Promise<{
+  error?: string;
+  code?: string;
+  result?: unknown;
+}> {
+  const text = await res.text();
+  if (!text) return {};
+  try {
+    return JSON.parse(text) as {
+      error?: string;
+      code?: string;
+      result?: unknown;
+    };
+  } catch {
+    return {
+      error: `Server returned non-JSON (HTTP ${res.status}).`,
+      code: "INVALID_RESPONSE",
+    };
+  }
+}
+
+function dataUrlToBlob(dataUrl: string): Blob {
+  const comma = dataUrl.indexOf(",");
+  if (!dataUrl.startsWith("data:") || comma < 0) {
+    throw new Error("Result is not a valid image data URL.");
+  }
+  const header = dataUrl.slice(0, comma);
+  const data = dataUrl.slice(comma + 1);
+  const mimeMatch = /data:([^;]+)/.exec(header);
+  const mime = mimeMatch?.[1] || "image/png";
+  const isBase64 = /;base64/i.test(header);
+  if (isBase64) {
+    const binary = atob(data);
+    const bytes = new Uint8Array(binary.length);
+    for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+    return new Blob([bytes], { type: mime });
+  }
+  return new Blob([decodeURIComponent(data)], { type: mime });
 }
 
 function BeforeAfterCompare({
@@ -195,6 +241,9 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const isDrawingRef = useRef(false);
   const activePointerIdRef = useRef<number | null>(null);
+  const pendingPointRef = useRef<{ x: number; y: number } | null>(null);
+  const rafRef = useRef<number | null>(null);
+  const bodyOverflowRef = useRef<string | null>(null);
 
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [brushSize, setBrushSize] = useState(() => {
@@ -222,7 +271,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
   const maskHasPaint = useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return false;
-    const ctx = maskCanvas.getContext("2d");
+    const ctx = maskCanvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return false;
     const data = ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height).data;
     for (let i = 3; i < data.length; i += 16) {
@@ -252,6 +301,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     }
 
     setError(null);
+    setDownloadNote(null);
     setResultUrl(null);
     setMaskPreviewUrl("");
     setHasMask(false);
@@ -376,18 +426,34 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return { x: 0, y: 0 };
     const rect = maskCanvas.getBoundingClientRect();
+    if (rect.width <= 0 || rect.height <= 0) return { x: 0, y: 0 };
     const scaleX = maskCanvas.width / rect.width;
     const scaleY = maskCanvas.height / rect.height;
+    const x = (clientX - rect.left) * scaleX;
+    const y = (clientY - rect.top) * scaleY;
     return {
-      x: (clientX - rect.left) * scaleX,
-      y: (clientY - rect.top) * scaleY,
+      x: Math.min(maskCanvas.width, Math.max(0, x)),
+      y: Math.min(maskCanvas.height, Math.max(0, y)),
     };
+  }, []);
+
+  const setBodyScrollLocked = useCallback((locked: boolean) => {
+    if (typeof document === "undefined") return;
+    if (locked) {
+      if (bodyOverflowRef.current === null) {
+        bodyOverflowRef.current = document.body.style.overflow;
+      }
+      document.body.style.overflow = "hidden";
+    } else if (bodyOverflowRef.current !== null) {
+      document.body.style.overflow = bodyOverflowRef.current;
+      bodyOverflowRef.current = null;
+    }
   }, []);
 
   const pushHistory = useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
     if (!maskCanvas) return;
-    const ctx = maskCanvas.getContext("2d");
+    const ctx = maskCanvas.getContext("2d", { willReadFrequently: true });
     if (!ctx) return;
     setDrawingHistory((prev) => {
       const next = [
@@ -398,17 +464,49 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     });
   }, []);
 
+  const flushPendingPoint = useCallback(() => {
+    rafRef.current = null;
+    const point = pendingPointRef.current;
+    if (!point || !isDrawingRef.current) return;
+    strokeBrush(point.x, point.y, lastPointRef.current);
+    lastPointRef.current = point;
+    pendingPointRef.current = null;
+  }, [strokeBrush]);
+
+  const queueDrawPoint = useCallback(
+    (point: { x: number; y: number }) => {
+      pendingPointRef.current = point;
+      if (rafRef.current != null) return;
+      rafRef.current = window.requestAnimationFrame(flushPendingPoint);
+    },
+    [flushPendingPoint]
+  );
+
   const endStroke = useCallback(() => {
     if (!isDrawingRef.current) return;
+    if (rafRef.current != null) {
+      window.cancelAnimationFrame(rafRef.current);
+      rafRef.current = null;
+    }
+    if (pendingPointRef.current) {
+      strokeBrush(
+        pendingPointRef.current.x,
+        pendingPointRef.current.y,
+        lastPointRef.current
+      );
+      pendingPointRef.current = null;
+    }
     isDrawingRef.current = false;
     activePointerIdRef.current = null;
     lastPointRef.current = null;
+    setBodyScrollLocked(false);
     setHasMask(maskHasPaint());
-  }, [maskHasPaint]);
+  }, [maskHasPaint, setBodyScrollLocked, strokeBrush]);
 
   const handlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLCanvasElement>) => {
       if (!image || loading) return;
+      if (e.button !== 0 && e.pointerType === "mouse") return;
       // One finger / primary pointer only — ignore extra touches.
       if (activePointerIdRef.current !== null) return;
       e.preventDefault();
@@ -421,6 +519,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       }
       pushHistory();
       isDrawingRef.current = true;
+      setBodyScrollLocked(true);
       const point = getCanvasCoords(e.clientX, e.clientY);
       lastPointRef.current = point;
       strokeBrush(point.x, point.y, null);
@@ -434,7 +533,14 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
         });
       }
     },
-    [image, loading, getCanvasCoords, strokeBrush, pushHistory]
+    [
+      image,
+      loading,
+      getCanvasCoords,
+      strokeBrush,
+      pushHistory,
+      setBodyScrollLocked,
+    ]
   );
 
   const handlePointerMove = useCallback(
@@ -501,9 +607,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           y: e.clientY - rect.top,
         });
       }
-      const point = getCanvasCoords(e.clientX, e.clientY);
-      strokeBrush(point.x, point.y, lastPointRef.current);
-      lastPointRef.current = point;
+      queueDrawPoint(getCanvasCoords(e.clientX, e.clientY));
     };
     const onUp = (e: PointerEvent) => {
       if (
@@ -521,8 +625,13 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
+      if (rafRef.current != null) {
+        window.cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      setBodyScrollLocked(false);
     };
-  }, [endStroke, getCanvasCoords, strokeBrush]);
+  }, [endStroke, getCanvasCoords, queueDrawPoint, setBodyScrollLocked]);
 
   const handleUndo = useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
@@ -565,7 +674,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     ctx.fillRect(0, 0, out.width, out.height);
 
     const src = maskCanvas
-      .getContext("2d")!
+      .getContext("2d", { willReadFrequently: true })!
       .getImageData(0, 0, maskCanvas.width, maskCanvas.height);
     const dst = ctx.getImageData(0, 0, out.width, out.height);
 
@@ -613,7 +722,12 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
     setLoading(true);
     setError(null);
+    setDownloadNote(null);
     setMaskPreviewUrl(maskCanvasRef.current?.toDataURL("image/png") || "");
+
+    const controller = new AbortController();
+    // Slightly above Worker budget so the server can return 504 first when possible.
+    const timeoutId = window.setTimeout(() => controller.abort(), 35_000);
 
     try {
       const imageDataUrl = canvas.toDataURL("image/jpeg", 0.92);
@@ -622,13 +736,10 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ image: imageDataUrl, mask: binaryMask }),
+        signal: controller.signal,
       });
 
-      const data = (await res.json()) as {
-        error?: string;
-        code?: string;
-        result?: unknown;
-      };
+      const data = await readRemoveApiPayload(res);
 
       if (!res.ok) {
         throw new Error(formatRemoveApiError(res.status, data));
@@ -643,7 +754,11 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       setDailyLeft((prev) => prev - 1);
       onResult?.(data.result);
     } catch (err) {
-      if (err instanceof TypeError) {
+      if (err instanceof DOMException && err.name === "AbortError") {
+        setError(
+          "Request aborted after ~35s with no response. The Worker usually returns HTTP 504 around 28s — try a smaller image."
+        );
+      } else if (err instanceof TypeError) {
         setError(
           "Network error talking to /api/remove-object. Check your connection and try again."
         );
@@ -651,15 +766,14 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
         setError(err instanceof Error ? err.message : "Something went wrong");
       }
     } finally {
+      window.clearTimeout(timeoutId);
       setLoading(false);
     }
   }, [image, dailyLeft, onResult, buildBinaryMaskDataUrl]);
 
   const blobFromResult = useCallback(async (url: string) => {
     if (url.startsWith("data:")) {
-      const res = await fetch(url);
-      if (!res.ok) throw new Error("Could not decode result image data.");
-      return res.blob();
+      return dataUrlToBlob(url);
     }
     const res = await fetch(url);
     if (!res.ok) {
@@ -667,6 +781,65 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     }
     return res.blob();
   }, []);
+
+  const canUseShare = useCallback((file: File) => {
+    if (typeof navigator === "undefined") return false;
+    if (typeof navigator.share !== "function") return false;
+    if (typeof navigator.canShare !== "function") return false;
+    try {
+      return navigator.canShare({ files: [file] });
+    } catch {
+      return false;
+    }
+  }, []);
+
+  const saveBlobWithAnchor = useCallback(async (blob: Blob, filename: string) => {
+    const objectUrl = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = objectUrl;
+    a.download = filename;
+    a.rel = "noopener";
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2500);
+  }, []);
+
+  const handleShare = useCallback(async () => {
+    if (!resultUrl || downloading) return;
+    setDownloading(true);
+    setError(null);
+    setDownloadNote(null);
+    try {
+      const blob = await blobFromResult(resultUrl);
+      const mime = blob.type || "image/png";
+      const filename =
+        mime.includes("jpeg") || mime.includes("jpg")
+          ? "magicremover-result.jpg"
+          : "magicremover-result.png";
+      const file = new File([blob], filename, { type: mime });
+      if (!canUseShare(file) || typeof navigator.share !== "function") {
+        setDownloadNote(
+          "Sharing isn’t available here — use Download, or long-press the After image."
+        );
+        return;
+      }
+      await navigator.share({ files: [file], title: "MagicRemover result" });
+      setDownloadNote("Opened the system share sheet — save the image from there.");
+    } catch (err) {
+      if (err instanceof Error && err.name === "AbortError") {
+        setDownloadNote("Share canceled.");
+        return;
+      }
+      setError(
+        err instanceof Error
+          ? err.message
+          : "Could not open the share sheet. Try Download instead."
+      );
+    } finally {
+      setDownloading(false);
+    }
+  }, [resultUrl, downloading, blobFromResult, canUseShare]);
 
   const handleDownload = useCallback(async () => {
     if (!resultUrl || downloading) return;
@@ -677,46 +850,14 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     try {
       const blob = await blobFromResult(resultUrl);
       const mime = blob.type || "image/png";
-      const filename = mime.includes("jpeg") || mime.includes("jpg")
-        ? "magicremover-result.jpg"
-        : "magicremover-result.png";
-      const file = new File([blob], filename, { type: mime });
+      const filename =
+        mime.includes("jpeg") || mime.includes("jpg")
+          ? "magicremover-result.jpg"
+          : "magicremover-result.png";
 
-      const nav = navigator as Navigator & {
-        canShare?: (data: ShareData) => boolean;
-        share?: (data: ShareData) => Promise<void>;
-      };
-
-      // Mobile browsers (esp. iOS) often ignore <a download> for blobs —
-      // prefer the system share sheet when files can be shared.
-      if (nav.canShare?.({ files: [file] }) && nav.share) {
-        try {
-          await nav.share({
-            files: [file],
-            title: "MagicRemover result",
-          });
-          setDownloadNote("Opened the system share sheet — save the image from there.");
-          return;
-        } catch (err) {
-          if (err instanceof Error && err.name === "AbortError") {
-            setDownloadNote("Share canceled.");
-            return;
-          }
-          // Fall through to anchor download.
-        }
-      }
-
-      const objectUrl = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = objectUrl;
-      a.download = filename;
-      a.rel = "noopener";
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      window.setTimeout(() => URL.revokeObjectURL(objectUrl), 2500);
+      await saveBlobWithAnchor(blob, filename);
       setDownloadNote(
-        "Download started. On some phones, use Share or long-press the After image if the file doesn’t appear."
+        "Download started. On iPhone/iPad, use Share or long-press the After image if the file doesn’t appear."
       );
     } catch (err) {
       const message =
@@ -733,7 +874,22 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     } finally {
       setDownloading(false);
     }
-  }, [resultUrl, downloading, blobFromResult]);
+  }, [resultUrl, downloading, blobFromResult, saveBlobWithAnchor]);
+
+  const handleOpenResult = useCallback(() => {
+    if (!resultUrl) return;
+    setError(null);
+    const opened = window.open(resultUrl, "_blank", "noopener,noreferrer");
+    if (!opened && resultUrl.startsWith("data:")) {
+      setDownloadNote(
+        "Popup blocked. Long-press the After image to save it instead."
+      );
+      return;
+    }
+    setDownloadNote(
+      "Opened the result in a new tab — use Save Image / long-press if download is blocked."
+    );
+  }, [resultUrl]);
 
   const handleNewImage = useCallback(() => {
     setImage(null);
@@ -880,7 +1036,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           <div className="flex flex-wrap justify-center gap-3">
             <Button
               size="lg"
-              className="min-h-11 min-w-[10rem]"
+              className="min-h-11 min-w-[9rem]"
               onClick={handleDownload}
               disabled={downloading}
             >
@@ -889,7 +1045,25 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
               ) : (
                 <DownloadIcon />
               )}
-              {downloading ? "Preparing…" : "Download / Share"}
+              {downloading ? "Preparing…" : "Download"}
+            </Button>
+            <Button
+              size="lg"
+              variant="secondary"
+              className="min-h-11 min-w-[9rem]"
+              onClick={handleShare}
+              disabled={downloading}
+            >
+              Share
+            </Button>
+            <Button
+              size="lg"
+              variant="outline"
+              className="min-h-11"
+              onClick={handleOpenResult}
+              disabled={downloading}
+            >
+              Open
             </Button>
             <Button
               size="lg"
@@ -1080,8 +1254,9 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
           {!hasMask && !loading ? (
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Paint a red mask with your finger or mouse. Page scroll is locked
-              while drawing. Undo with Ctrl/⌘+Z on desktop.
+              Paint with one finger — page scroll locks while you draw, and
+              strokes continue if your finger slides off the canvas. Undo with
+              Ctrl/⌘+Z on desktop.
             </p>
           ) : null}
 
