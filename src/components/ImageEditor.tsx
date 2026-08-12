@@ -261,6 +261,7 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement>(null);
   const stageRef = useRef<HTMLDivElement>(null);
+  const actionsRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const lastPointRef = useRef<{ x: number; y: number } | null>(null);
   const isDrawingRef = useRef(false);
@@ -830,8 +831,16 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
       }
 
       setResultUrl(data.result);
-      setCompareMode("slider");
+      setCompareMode(
+        window.matchMedia?.("(pointer: coarse)").matches ? "side" : "slider"
+      );
       setSessionLeft((prev) => prev - 1);
+      window.setTimeout(() => {
+        actionsRef.current?.scrollIntoView({
+          behavior: "smooth",
+          block: "nearest",
+        });
+      }, 80);
     } catch (err) {
       if (err instanceof DOMException && err.name === "AbortError") {
         setError(
@@ -1019,6 +1028,18 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
       ? (brushSize / canvasSize.w) * stageWidth
       : brushSize;
 
+  const nearestPreset = BRUSH_PRESETS.reduce((best, size) =>
+    Math.abs(size - brushSize) < Math.abs(best - brushSize) ? size : best
+  );
+
+  const loopStep: 1 | 2 | 3 | 4 = !image
+    ? 1
+    : resultUrl
+      ? 4
+      : loading
+        ? 3
+        : 2;
+
   const errorBanner = error ? (
     <Alert variant="destructive" className="mt-3">
       <AlertCircleIcon />
@@ -1038,6 +1059,8 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
             : "Brush over the area you want to erase."
           : "Upload a photo to start.";
 
+  const stepLabels = ["Upload", "Brush", "Remove", "Download"] as const;
+
   return (
     <div
       id="editor"
@@ -1047,7 +1070,7 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
       <div className="mb-3 flex items-center justify-between gap-3 text-xs text-muted-foreground">
         <span className="inline-flex items-center gap-1.5">
           <EraserIcon className="size-3.5" aria-hidden="true" />
-          Brush the area to erase, then remove
+          Upload → brush → remove → download
         </span>
         <Badge
           variant="secondary"
@@ -1057,7 +1080,37 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
         </Badge>
       </div>
 
-      <p id={statusId} className="sr-only" aria-live="polite">
+      <ol
+        className="mb-3 flex flex-wrap items-center justify-center gap-1.5 text-xs"
+        aria-label="Object remover steps"
+      >
+        {stepLabels.map((label, index) => {
+          const n = (index + 1) as 1 | 2 | 3 | 4;
+          const active = loopStep === n;
+          const done = loopStep > n;
+          return (
+            <li
+              key={label}
+              className={cn(
+                "inline-flex items-center gap-1.5 rounded-full px-2.5 py-1",
+                active && "bg-primary text-primary-foreground",
+                done && !active && "bg-success/10 text-success",
+                !active && !done && "bg-muted text-muted-foreground"
+              )}
+              aria-current={active ? "step" : undefined}
+            >
+              <span className="font-semibold tabular-nums">{n}</span>
+              {label}
+            </li>
+          );
+        })}
+      </ol>
+
+      <p
+        id={statusId}
+        className="mb-4 text-center text-sm text-muted-foreground"
+        aria-live="polite"
+      >
         {statusText}
       </p>
 
@@ -1149,6 +1202,18 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               <p className="mt-2 text-center text-xs text-muted-foreground">
                 Drag or slide to compare before and after
               </p>
+              <figure className="mx-auto mt-3 max-w-[10rem]">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={resultUrl}
+                  alt="After result — long-press to save on mobile"
+                  className="w-full rounded-lg border border-border object-contain"
+                  draggable={false}
+                />
+                <figcaption className="mt-1 text-center text-[11px] text-muted-foreground">
+                  After · long-press to save
+                </figcaption>
+              </figure>
             </div>
           ) : (
             <div className="mb-4 flex flex-col gap-4 sm:flex-row">
@@ -1181,7 +1246,7 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               <figure className="relative flex-1 overflow-hidden rounded-xl bg-muted">
                 <Image
                   src={resultUrl}
-                  alt="Photo after object removal"
+                  alt="Photo after object removal — long-press to save on mobile"
                   width={600}
                   height={450}
                   className="h-full w-full object-contain"
@@ -1197,7 +1262,10 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
             </div>
           )}
 
-          <div className="flex flex-wrap justify-center gap-3">
+          <div
+            ref={actionsRef}
+            className="sticky bottom-3 z-10 flex flex-wrap justify-center gap-3 rounded-xl border border-border/60 bg-background/95 p-3 shadow-sm backdrop-blur supports-backdrop-filter:bg-background/85"
+          >
             <Button
               size="lg"
               className="min-h-11 min-w-[9rem]"
@@ -1256,6 +1324,14 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               New Image
             </Button>
           </div>
+          {!downloadNote && !error ? (
+            <Alert className="mt-3">
+              <DownloadIcon />
+              <AlertDescription>
+                Removal finished — compare the result, then download.
+              </AlertDescription>
+            </Alert>
+          ) : null}
           {downloadNote ? (
             <Alert className="mt-3">
               <DownloadIcon />
@@ -1322,6 +1398,13 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
                 }}
               />
             ) : null}
+            {!hasMask && !loading ? (
+              <div className="pointer-events-none absolute inset-x-0 bottom-3 z-10 flex justify-center px-3">
+                <span className="rounded-md bg-background/90 px-3 py-1.5 text-xs font-medium text-foreground shadow-sm ring-1 ring-border">
+                  Paint red over what to erase
+                </span>
+              </div>
+            ) : null}
             {loading ? (
               <div
                 className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-2 bg-background/55 backdrop-blur-[1px]"
@@ -1352,6 +1435,19 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
                 >
                   Brush
                 </Label>
+                <span
+                  aria-hidden="true"
+                  className="inline-flex size-8 shrink-0 items-center justify-center"
+                  title={`${brushSize}px brush`}
+                >
+                  <span
+                    className="rounded-full border-2 border-red-500/80 bg-red-500/15"
+                    style={{
+                      width: Math.max(8, Math.min(28, brushSize * 0.45)),
+                      height: Math.max(8, Math.min(28, brushSize * 0.45)),
+                    }}
+                  />
+                </span>
                 <Slider
                   id="brush-size"
                   className="max-w-none flex-1 sm:max-w-[12rem]"
@@ -1378,8 +1474,8 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
                     key={size}
                     size="sm"
                     className="min-h-9"
-                    variant={brushSize === size ? "secondary" : "outline"}
-                    aria-pressed={brushSize === size}
+                    variant={nearestPreset === size ? "secondary" : "outline"}
+                    aria-pressed={nearestPreset === size}
                     onClick={() => setBrushSize(size)}
                   >
                     {size === 12 ? "Fine" : size === 30 ? "Medium" : "Broad"}
@@ -1440,11 +1536,15 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
             )}
           </Button>
 
-          {!hasMask && !loading ? (
+          {!loading && (sessionLeft <= 0 || !hasMask) ? (
             <p className="mt-2 text-center text-xs text-muted-foreground">
-              Paint with one finger — page scroll locks while you draw, and
-              strokes continue if your finger slides off the canvas. Undo with
-              Ctrl/⌘+Z on desktop.
+              {sessionLeft <= 0
+                ? "No demo edits left in this session. Refresh the page to reset."
+                : "Brush a mask first, then remove. One-finger paint; Undo with Ctrl/⌘+Z."}
+            </p>
+          ) : hasMask && !loading ? (
+            <p className="mt-2 text-center text-xs text-success">
+              Mask ready — tap Remove Objects.
             </p>
           ) : null}
 
