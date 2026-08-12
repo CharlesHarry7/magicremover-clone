@@ -2,6 +2,8 @@
 /**
  * Post-deploy smoke check: homepage HTML 200 is not enough — critical
  * /_next/static and /cases assets must also return 200 with sane content-types.
+ * A known-missing hashed chunk must 404 with a non-HTML content-type (not a
+ * Next/OpenNext HTML document shell).
  *
  * Usage: node scripts/smoke-deployed-assets.mjs <baseUrl>
  * Example: node scripts/smoke-deployed-assets.mjs https://example.workers.dev
@@ -96,4 +98,31 @@ if (failed > 0) {
   process.exit(1);
 }
 
-console.log(`smoke-deployed-assets: OK (${samples.length} assets) @ ${baseUrl}`);
+// Stale hashed chunks after a new deploy must hard-404 as non-HTML.
+// Next/OpenNext HTML 404 (~30KB, text/html, x-opennext) is treated as JS by
+// old cached documents and leaves the app looking dead.
+const missingPath = "/_next/static/chunks/app/page-deadbeefdeadbeef.js";
+const missingRes = await fetch(baseUrl + missingPath, {
+  method: "GET",
+  redirect: "follow",
+});
+const missingCt = (missingRes.headers.get("content-type") || "").toLowerCase();
+const missingMark =
+  missingRes.status === 404 && !missingCt.includes("text/html") ? "OK" : "FAIL";
+console.log(
+  `${missingMark} ${missingRes.status} ${missingCt || "<?>"}\t${missingPath} (known-missing)`
+);
+if (missingRes.status !== 404) {
+  console.error(
+    `smoke-deployed-assets: known-missing ${missingPath} returned ${missingRes.status}, expected 404`
+  );
+  process.exit(1);
+}
+if (missingCt.includes("text/html")) {
+  console.error(
+    `smoke-deployed-assets: known-missing ${missingPath} returned content-type ${missingCt}. ASSETS miss must hard-404 as non-HTML (not a Next/OpenNext HTML shell).`
+  );
+  process.exit(1);
+}
+
+console.log(`smoke-deployed-assets: OK (${samples.length} assets + 1 known-missing 404) @ ${baseUrl}`);

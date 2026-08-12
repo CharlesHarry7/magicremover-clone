@@ -10,13 +10,17 @@
 	//   npm run deploy          # promote
 	//   npm run upload          # non-prod version (preferred for PR QA)
 	//   npm run deploy:preview  # upload --preview-alias preview
-	//   = opennextjs-cloudflare build && check:assets && opennextjs-cloudflare …
+	//   = build:worker (OpenNext + /_next/static hard-404 patch) && check:assets && …
 	//
 	// DO NOT:
 	//   - set next.config assetPrefix / basePath to “fix” static 404s
 	//   - use Cloudflare Pages git / `pages deploy` / bare `next build` alone
 	//   - publish Worker without assets (or assets without Worker) for the full app
 	//   - set assets.run_worker_first: true globally (CSS/JS must hit ASSETS first)
+	//
+	// /_next/static/* routing: ASSETS hit serves the file (200 + MIME).
+	// ASSETS miss invokes the Worker; patch-opennext-static-404.mjs injects an
+	// early fetch guard so that miss is a hard 404 text/plain — never a Next HTML shell.
 	//
 	// If magicremover-clone.pages.dev still shows HTML 200 + static 404, unbind/delete
 	// the legacy Pages project, then redeploy this Worker so the hostname points here.
@@ -39,6 +43,7 @@
 		"binding": "ASSETS",
 		// Explicit: platform serves matching ASSETS (CSS/JS/media/cases) before the Worker.
 		// Default is false; keep it false so /_next/static/* never depends on SSR routing.
+		// ASSETS hit → file. ASSETS miss for /_next/static/* → Worker hard-404 (not HTML).
 		"run_worker_first": false
 	},
 	"services": [
