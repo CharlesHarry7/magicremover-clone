@@ -1,15 +1,27 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	// OpenNext Cloudflare Worker + Workers Static Assets (ASSETS).
-	// REQUIRED: always publish Worker (main) AND assets.directory together via
-	//   npm run deploy   # or npm run upload (non-prod version)
+	// =============================================================================
+	// OpenNext on Cloudflare Workers — Worker SSR + Workers Static Assets (ASSETS)
+	// =============================================================================
+	// Live pages.dev HTML/SSR with ALL `/_next/static/*` 404 is NOT assetPrefix/basePath.
+	// It means the edge is serving OpenNext/Worker HTML without uploading `.open-next/assets`.
+	//
+	// REQUIRED deploy (single operation uploads Worker + assets.directory):
+	//   npm run deploy          # promote
+	//   npm run upload          # non-prod version (preferred for PR QA)
+	//   npm run deploy:preview  # upload --preview-alias preview
 	//   = opennextjs-cloudflare build && check:assets && opennextjs-cloudflare …
-	// DO NOT use Cloudflare Pages git / `next build` / assets-only uploads.
-	// Broken edge looks like: empty `/` 404 (ASSETS _headers, no SSR Worker) +
-	// mixed `/_next/static/*` 404 (stale ASSETS) → unstyled bare HTML, no hydrate.
-	// If magicremover-clone.pages.dev is still bound to a legacy Pages project,
-	// disconnect/delete that Pages project in the dashboard, then redeploy here.
+	//
+	// DO NOT:
+	//   - set next.config assetPrefix / basePath to “fix” static 404s
+	//   - use Cloudflare Pages git / `pages deploy` / bare `next build` alone
+	//   - publish Worker without assets (or assets without Worker) for the full app
+	//   - set assets.run_worker_first: true globally (CSS/JS must hit ASSETS first)
+	//
+	// If magicremover-clone.pages.dev still shows HTML 200 + static 404, unbind/delete
+	// the legacy Pages project, then redeploy this Worker so the hostname points here.
 	// Prefer workers.dev for QA until pages.dev is unbound + redeployed.
+	// =============================================================================
 	"main": ".open-next/worker.js",
 	"name": "magicremover-clone",
 	"compatibility_date": "2026-08-12",
@@ -23,9 +35,11 @@
 	"assets": {
 		// Built by `opennextjs-cloudflare build` — includes /_next/static/** and public/**
 		"directory": ".open-next/assets",
-		"binding": "ASSETS"
-		// run_worker_first defaults to false: platform serves matching ASSETS
-		// (CSS/JS/media/cases) before invoking the Worker. Do not remove this binding.
+		// OpenNext Worker reads env.ASSETS — binding name is required.
+		"binding": "ASSETS",
+		// Explicit: platform serves matching ASSETS (CSS/JS/media/cases) before the Worker.
+		// Default is false; keep it false so /_next/static/* never depends on SSR routing.
+		"run_worker_first": false
 	},
 	"services": [
 		{

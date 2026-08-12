@@ -71,7 +71,8 @@ Worker binding typings live in slim `cloudflare-env.d.ts`. Regenerate a full dum
 | `npm run build` | Production Next.js build |
 | `npm run lint` | ESLint (flat config; `eslint-config-next@16` for flat exports while the app stays on Next 15) |
 | `npm run typecheck` | TypeScript (`tsc --noEmit`) |
-| CI | `lint` → `typecheck` → `build` → `build:worker` → `check:assets` |
+| CI | `lint` → `typecheck` → `check:wrangler` → `build` → `build:worker` → `check:assets` |
+| `npm run check:wrangler` | Fail if `assetPrefix`/`basePath` appear, or wrangler lacks OpenNext `main` + `ASSETS` |
 | `npm run build:worker` | OpenNext Cloudflare build (Worker + ASSETS) |
 | `npm run check:assets` | Fail if built HTML refs / public cases are missing from `.open-next/assets` |
 | `npm run preview` | OpenNext build + asset gate + local Workers preview |
@@ -85,17 +86,23 @@ Worker binding typings live in slim `cloudflare-env.d.ts`. Regenerate a full dum
 
 Keep QA on a **non-prod** surface. **Merging to `main` does not repair** a broken `pages.dev`.
 
-### Root cause (current `magicremover-clone.pages.dev`)
+### Root cause (confirmed): HTML/SSR without OpenNext ASSETS
 
-Not a Next `basePath` / `assetPrefix` bug. Repo config has **no** `basePath`/`assetPrefix`; OpenNext expects Workers Static Assets from `.open-next/assets` with `wrangler.jsonc` → `assets.directory` + `ASSETS` binding, and SSR/HTML from `.open-next/worker.js`.
+**Not** a Next `basePath` / `assetPrefix` bug — do **not** add either. Repo `next.config.ts` has none; CI runs `npm run check:wrangler` to keep it that way.
 
-Live edge symptoms observed:
+OpenNext on Workers needs **one** publish that includes:
 
-- `/` → **empty 404** with `_headers` security headers (ASSETS answering; **Worker not serving** the OpenNext HTML/SSR)
-- Some `/_next/static/*` → **200**, others (including current CSS hash) → **404** (stale/partial ASSETS vs build)
-- `/cases/*` may **200** while the app shell stays unstyled/unhydrated because CSS/JS chunks 404
+| Piece | Path / config |
+| --- | --- |
+| SSR Worker | `wrangler.jsonc` → `main: ".open-next/worker.js"` |
+| Static assets | `wrangler.jsonc` → `assets.directory: ".open-next/assets"`, `binding: "ASSETS"`, `run_worker_first: false` |
 
-That is a **broken/partial Workers publish** (or a Pages git/`next build` surface that never uploaded the OpenNext ASSETS+Worker pair)—not a missing `public/` file in the repo.
+When live `*.pages.dev` (or a partial Worker) serves HTML/SSR **without** uploading `.open-next/assets`, every `/_next/static/*` **404**s and the page never hydrates. Other broken edges:
+
+- `/` → **empty 404** with `_headers` (ASSETS answering; Worker not bound)
+- Mixed static **200**/**404** (stale/partial ASSETS vs current HTML hashes)
+
+Fix: `npm run deploy` / `npm run upload` (OpenNext build + ASSETS together). Unbind legacy Pages git/`pages deploy` if it still owns `*.pages.dev`.
 
 ### How to open a working preview for QA
 

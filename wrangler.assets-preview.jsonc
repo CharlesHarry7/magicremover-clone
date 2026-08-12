@@ -1,10 +1,12 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
-	// Assets-only preview Worker (NO OpenNext SSR handler).
-	// Use when temporary/free accounts cannot fit the ~5MiB OpenNext Worker:
-	//   npx wrangler deploy --temporary -c wrangler.assets-preview.jsonc
-	// Proves `/_next/static/**` and `/cases/**` return 200 from the ASSETS bundle.
-	// Full app preview still requires: npm run upload / npm run deploy (real account).
+	// Assets-only temporary Worker (NO OpenNext SSR `main`).
+	// Proves the OpenNext ASSETS bundle serves `/_next/static/**` + `/cases/**` → 200.
+	//   npm run preview:assets
+	//   = check:wrangler && opennextjs-cloudflare build && check:assets &&
+	//     wrangler deploy --temporary -c wrangler.assets-preview.jsonc
+	// Full HTML+hydrate still needs real account: npm run upload / npm run deploy
+	// (wrangler.jsonc main + assets.directory together). Never use this as prod.
 	"name": "magicremover-assets-preview",
 	"compatibility_date": "2026-08-12",
 	"workers_dev": true,

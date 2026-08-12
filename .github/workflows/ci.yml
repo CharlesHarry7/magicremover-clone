@@ -19,6 +19,8 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
+      # Guard: no assetPrefix/basePath; wrangler main + assets.directory + ASSETS binding.
+      - run: npm run check:wrangler
       - run: npm run build
       # OpenNext ASSETS gate: catches HTML-200 / static-404 deploy breakage before upload.
       - run: npm run build:worker
