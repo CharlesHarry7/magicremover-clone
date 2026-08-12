@@ -16,10 +16,9 @@ import {
 } from "@/components/ui/sheet";
 
 const navLinks = [
+  { href: "/#try", label: "Object Remover" },
   { href: "/ai-image-generator", label: "AI Image Generator" },
   { href: "/edit-text-in-image", label: "Edit Text" },
-  { href: "#try", label: "Image Tools" },
-  { href: "#try", label: "Video Tools" },
 ];
 
 export default function Navbar() {
@@ -55,10 +54,7 @@ export default function Navbar() {
         </div>
 
         <div className="hidden items-center gap-2 lg:flex">
-          <Button variant="outline" size="sm">
-            English
-          </Button>
-          <Button size="sm" nativeButton={false} render={<Link href="#try" />}>
+          <Button size="sm" nativeButton={false} render={<Link href="/#try" />}>
             Try free
           </Button>
         </div>
@@ -106,10 +102,9 @@ export default function Navbar() {
             </div>
             <Separator />
             <div className="flex flex-col gap-2 px-4 pb-4">
-              <Button variant="outline">English</Button>
               <Button
                 nativeButton={false}
-                render={<Link href="#try" />}
+                render={<Link href="/#try" />}
                 onClick={() => setMobileOpen(false)}
               >
                 Try free

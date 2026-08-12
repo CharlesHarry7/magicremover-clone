@@ -1,4 +1,3 @@
-import Navbar from "@/components/Navbar";
 import Hero from "@/components/Hero";
 import RemoveTypes from "@/components/RemoveTypes";
 import AIGeneratorPromo from "@/components/AIGeneratorPromo";
@@ -8,7 +7,6 @@ import HowItWorks from "@/components/HowItWorks";
 import WhyUs from "@/components/WhyUs";
 import Limitations from "@/components/Limitations";
 import FAQ from "@/components/FAQ";
-import Footer from "@/components/Footer";
 
 const featureSections = [
   {
@@ -22,7 +20,7 @@ const featureSections = [
       "Pedestrians and onlookers along the street",
     ],
     ctaLabel: "Try Background People Remover free",
-    ctaHref: "#try",
+    ctaHref: "/#try",
     beforeImage: "/cases/remove-people-before01.webp",
     afterImage: "/cases/remove-people-after01.webp",
   },
@@ -37,7 +35,7 @@ const featureSections = [
       "Parked vehicles, traffic cones, and signage posts",
     ],
     ctaLabel: "Try AI Object Remover free",
-    ctaHref: "#try",
+    ctaHref: "/#try",
     beforeImage: "/cases/remove-object-before02.webp",
     afterImage: "/cases/remove-object-after02.webp",
   },
@@ -52,7 +50,7 @@ const featureSections = [
       "Copyright notices and attribution strips",
     ],
     ctaLabel: "Try Remove Text from Image free",
-    ctaHref: "#try",
+    ctaHref: "/#try",
     beforeImage: "/cases/text-remover-before.webp",
     afterImage: "/cases/text-remover-after.webp",
   },
@@ -67,7 +65,7 @@ const featureSections = [
       "Semi-transparent overlays across full images",
     ],
     ctaLabel: "Try Remove Watermark from Photo free",
-    ctaHref: "#try",
+    ctaHref: "/#try",
     beforeImage: "/cases/gemini-watermark-remover-before.webp",
     afterImage: "/cases/gemini-watermark-remover-after.webp",
   },
@@ -82,7 +80,7 @@ const featureSections = [
       "Billboards, storefronts, and packaging brand marks",
     ],
     ctaLabel: "Try Logo Remover free",
-    ctaHref: "#try",
+    ctaHref: "/#try",
     beforeImage: "/cases/logo-remover-before.webp",
     afterImage: "/cases/logo-remover-after.webp",
   },
@@ -97,7 +95,7 @@ const featureSections = [
       "Chat bubble balloons and message overlays",
     ],
     ctaLabel: "Try Sticker & Emoji Remover free",
-    ctaHref: "#try",
+    ctaHref: "/#try",
     beforeImage: "/cases/logo-remover-before.webp",
     afterImage: "/cases/logo-remover-after.webp",
   },
@@ -105,33 +103,29 @@ const featureSections = [
 
 export default function Home() {
   return (
-    <>
-      <Navbar />
-      <main className="flex-1">
-        <Hero />
-        <RemoveTypes />
-        <AIGeneratorPromo />
-        <CoverHookPromo />
-        {featureSections.map((feature, index) => (
-          <FeatureDetail
-            key={feature.tag}
-            tag={feature.tag}
-            title={feature.title}
-            description={feature.description}
-            bullets={feature.bullets}
-            ctaLabel={feature.ctaLabel}
-            ctaHref={feature.ctaHref}
-            beforeImage={feature.beforeImage}
-            afterImage={feature.afterImage}
-            reverse={index % 2 === 1}
-          />
-        ))}
-        <HowItWorks />
-        <WhyUs />
-        <Limitations />
-        <FAQ />
-      </main>
-      <Footer />
-    </>
+    <main>
+      <Hero />
+      <RemoveTypes />
+      <AIGeneratorPromo />
+      <CoverHookPromo />
+      {featureSections.map((feature, index) => (
+        <FeatureDetail
+          key={feature.tag}
+          tag={feature.tag}
+          title={feature.title}
+          description={feature.description}
+          bullets={feature.bullets}
+          ctaLabel={feature.ctaLabel}
+          ctaHref={feature.ctaHref}
+          beforeImage={feature.beforeImage}
+          afterImage={feature.afterImage}
+          reverse={index % 2 === 1}
+        />
+      ))}
+      <HowItWorks />
+      <WhyUs />
+      <Limitations />
+      <FAQ />
+    </main>
   );
 }

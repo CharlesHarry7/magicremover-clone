@@ -4,16 +4,16 @@ import Image from "next/image";
 import { Separator } from "@/components/ui/separator";
 
 const allTools = [
-  { label: "Remove People from Photo", href: "#try" },
-  { label: "Remove Watermark from Photo", href: "#try" },
-  { label: "Remove Object from Photo", href: "#try" },
-  { label: "Remove Sticker from Image", href: "#try" },
-  { label: "Remove Text from Image", href: "#try" },
-  { label: "Remove Gemini Watermark", href: "#try" },
-  { label: "Logo Remover", href: "#try" },
-  { label: "Magic Eraser", href: "#try" },
-  { label: "AI Image Generator", href: "#try" },
-  { label: "Edit Text", href: "#try" },
+  { label: "Remove People from Photo", href: "/#try" },
+  { label: "Remove Watermark from Photo", href: "/#try" },
+  { label: "Remove Object from Photo", href: "/#try" },
+  { label: "Remove Sticker from Image", href: "/#try" },
+  { label: "Remove Text from Image", href: "/#try" },
+  { label: "Remove Gemini Watermark", href: "/#try" },
+  { label: "Logo Remover", href: "/#try" },
+  { label: "Magic Eraser", href: "/#try" },
+  { label: "AI Image Generator", href: "/ai-image-generator" },
+  { label: "Edit Text", href: "/edit-text-in-image" },
 ];
 
 const guides = [
@@ -101,6 +101,7 @@ export default function Footer() {
                 href="https://apimodels.app"
                 className="text-primary hover:underline"
                 target="_blank"
+                rel="noreferrer"
               >
                 apimodels.app
               </Link>{" "}
@@ -112,6 +113,7 @@ export default function Footer() {
                 href="https://coverhook.com"
                 className="text-primary hover:underline"
                 target="_blank"
+                rel="noreferrer"
               >
                 AI social media cover generator
               </Link>
@@ -121,8 +123,8 @@ export default function Footer() {
 
         <Separator className="mt-10" />
         <div className="pt-6 text-center text-xs text-muted-foreground">
-          2 free removes a day, plus 2 more when you sign in · Results retained
-          24 hours · We don&apos;t store your originals.
+          Free object remover demo · Results are not stored by this app · Stub
+          marketing pages link back to the editor.
         </div>
       </div>
     </footer>
