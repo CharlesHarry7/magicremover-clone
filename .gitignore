@@ -32,6 +32,9 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
+# Full wrangler runtime dump (use slim cloudflare-env.d.ts in repo)
+/worker-configuration.d.ts
 
 # vercel
 .vercel

@@ -46,7 +46,7 @@ const faqs = [
   {
     question: "What image formats are supported?",
     answer:
-      "MagicRemover supports JPG and PNG image formats, with files up to approximately 10 MB in size.",
+      "MagicRemover supports JPG, PNG, and WebP image formats, with files up to approximately 10 MB in size.",
   },
   {
     question: "Are my uploaded photos stored?",

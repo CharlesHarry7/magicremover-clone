@@ -1,3 +1,4 @@
 # Copy to .dev.vars for local `npm run preview` / wrangler.
+# For `npm run dev` use `.env.local` instead (see `.env.example`).
 # For production: wrangler secret put REPLICATE_API_TOKEN
 REPLICATE_API_TOKEN=

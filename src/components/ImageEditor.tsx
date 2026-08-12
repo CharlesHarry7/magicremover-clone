@@ -46,7 +46,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
 
   const handleFileUpload = useCallback((file: File) => {
     if (!file.type.startsWith("image/")) {
-      setError("Please upload a JPG or PNG image.");
+      setError("Please upload a JPG, PNG, or WebP image.");
       return;
     }
     if (file.size > 10 * 1024 * 1024) {
@@ -359,7 +359,7 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
           <UploadIcon className="mx-auto mb-3 h-12 w-12 text-muted-foreground/40" />
           <p className="mb-1 text-sm font-medium">Drop a photo here</p>
           <p className="text-xs text-muted-foreground">
-            or click to browse · JPG / PNG · up to ~10 MB
+            or click to browse · JPG / PNG / WebP · up to ~10 MB
           </p>
           <input
             ref={fileInputRef}

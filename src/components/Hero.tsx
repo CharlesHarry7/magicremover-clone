@@ -8,7 +8,7 @@ import ImageEditor from "./ImageEditor";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 
 const tabs = ["People", "Object", "Text", "Watermark", "Sticker"] as const;
 
@@ -101,27 +101,28 @@ export default function Hero() {
         </p>
 
         <div className="mb-8 flex flex-wrap items-center justify-center gap-2">
-          <Tabs
-            value={activeTab}
-            onValueChange={(value) => {
-              if (typeof value === "string" && tabs.includes(value as (typeof tabs)[number])) {
-                setActiveTab(value as (typeof tabs)[number]);
-                setMode("demo");
-              }
+          <ToggleGroup
+            variant="outline"
+            spacing={1}
+            className="flex flex-wrap justify-center rounded-full bg-muted/80 p-1"
+            value={mode === "demo" ? [activeTab] : []}
+            onValueChange={(group) => {
+              const next = group[0] as (typeof tabs)[number] | undefined;
+              if (!next || !tabs.includes(next)) return;
+              setActiveTab(next);
+              setMode("demo");
             }}
           >
-            <TabsList className="flex h-auto flex-wrap justify-center gap-1 bg-muted/80 p-1">
-              {tabs.map((tab) => (
-                <TabsTrigger
-                  key={tab}
-                  value={tab}
-                  className="rounded-full px-4 data-active:bg-primary data-active:text-primary-foreground"
-                >
-                  {tab}
-                </TabsTrigger>
-              ))}
-            </TabsList>
-          </Tabs>
+            {tabs.map((tab) => (
+              <ToggleGroupItem
+                key={tab}
+                value={tab}
+                className="rounded-full px-4 data-[state=on]:bg-primary data-[state=on]:text-primary-foreground data-[state=on]:hover:bg-primary/90"
+              >
+                {tab}
+              </ToggleGroupItem>
+            ))}
+          </ToggleGroup>
           <Button
             variant={mode === "editor" ? "default" : "outline"}
             className="rounded-full"
@@ -192,7 +193,7 @@ export default function Hero() {
                     <UploadIcon className="mx-auto mb-3 h-10 w-10 text-muted-foreground/40" />
                     <p className="mb-1 text-sm font-medium">Drop a photo here</p>
                     <p className="text-xs text-muted-foreground">
-                      or click to browse · JPG / PNG · up to ~10 MB
+                      or click to browse · JPG / PNG / WebP · up to ~10 MB
                     </p>
                     <input
                       ref={fileInputRef}
