@@ -38,7 +38,7 @@ class ApiError extends Error {
 function missingKeyResponse() {
   // Server log only — never put env/provider names in the JSON body.
   console.error(
-    "MISSING_API_KEY: set REPLICATE_API_TOKEN in .env.local, .dev.vars, or wrangler secret, then restart/redeploy."
+    "MISSING_API_KEY: removal provider token is not set; configure Worker secrets and redeploy."
   );
   return NextResponse.json(MISSING_API_KEY_JSON, { status: 503 });
 }
