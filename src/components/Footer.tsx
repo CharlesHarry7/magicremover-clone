@@ -1,7 +1,7 @@
 import Link from "next/link";
 
+import BrandLogo from "@/components/BrandLogo";
 import HashNavLink from "@/components/HashNavLink";
-import SafeImage from "@/components/SafeImage";
 import { Separator } from "@/components/ui/separator";
 import {
   FOOTER_COMPANY,
@@ -50,14 +50,7 @@ export default function Footer() {
 
           <div>
             <Link href="/" className="mb-3 flex items-center gap-2">
-              <SafeImage
-                src="/logo.webp"
-                alt="MagicRemover"
-                width={28}
-                height={28}
-                compact
-                className="h-7 w-7"
-              />
+              <BrandLogo size={28} className="h-7 w-7" />
               <span className="font-bold">MagicRemover</span>
             </Link>
             <p className="mb-3 text-xs text-muted-foreground">

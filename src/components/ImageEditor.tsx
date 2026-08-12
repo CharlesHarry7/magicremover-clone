@@ -18,6 +18,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Slider } from "@/components/ui/slider";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
 import {
   classifyRemoveFailure,
@@ -152,7 +153,7 @@ function BeforeAfterCompare({
   return (
     <div
       ref={containerRef}
-      className="relative mx-auto aspect-[4/3] w-full max-h-[min(50vh,360px)] max-w-[800px] touch-none overflow-hidden rounded-xl bg-muted select-none sm:max-h-none"
+      className="relative mx-auto aspect-[4/3] w-full max-h-[50vh] max-w-[800px] touch-none overflow-hidden rounded-xl bg-muted select-none sm:max-h-[500px]"
       onPointerDown={(e) => {
         if ((e.target as HTMLElement).closest("[data-compare-handle]")) return;
         e.preventDefault();
@@ -1195,49 +1196,38 @@ export default function ImageEditor({
         </div>
       ) : resultUrl ? (
         <div>
-          <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
-            <ToggleGroup
-              variant="outline"
-              spacing={0}
-              aria-label="Before and after compare mode"
-              value={[compareMode]}
-              onValueChange={(group) => {
-                const next = group[0] as "side" | "slider" | undefined;
-                if (next) setCompareMode(next);
-              }}
-            >
-              <ToggleGroupItem
-                value="slider"
-                className="px-3"
-                aria-label="Slider compare"
+          <Tabs
+            value={compareMode}
+            onValueChange={(next) => {
+              if (next === "slider" || next === "side") setCompareMode(next);
+            }}
+            className="mb-4"
+          >
+            <div className="mb-3 flex flex-wrap items-center justify-between gap-3">
+              <TabsList aria-label="Before and after compare mode">
+                <TabsTrigger value="slider" className="px-3">
+                  Slider
+                </TabsTrigger>
+                <TabsTrigger value="side" className="px-3">
+                  Side by side
+                </TabsTrigger>
+              </TabsList>
+              <Button
+                variant={showMaskOnBefore ? "secondary" : "outline"}
+                size="sm"
+                aria-pressed={showMaskOnBefore}
+                aria-label={
+                  showMaskOnBefore
+                    ? "Hide brush mask on before image"
+                    : "Show brush mask on before image"
+                }
+                onClick={() => setShowMaskOnBefore((v) => !v)}
               >
-                Slider
-              </ToggleGroupItem>
-              <ToggleGroupItem
-                value="side"
-                className="px-3"
-                aria-label="Side by side compare"
-              >
-                Side by side
-              </ToggleGroupItem>
-            </ToggleGroup>
-            <Button
-              variant={showMaskOnBefore ? "secondary" : "outline"}
-              size="sm"
-              aria-pressed={showMaskOnBefore}
-              aria-label={
-                showMaskOnBefore
-                  ? "Hide brush mask on before image"
-                  : "Show brush mask on before image"
-              }
-              onClick={() => setShowMaskOnBefore((v) => !v)}
-            >
-              {showMaskOnBefore ? "Mask on" : "Mask off"}
-            </Button>
-          </div>
+                {showMaskOnBefore ? "Mask on" : "Mask off"}
+              </Button>
+            </div>
 
-          {compareMode === "slider" ? (
-            <div className="mb-4">
+            <TabsContent value="slider">
               <BeforeAfterCompare
                 beforeUrl={beforeUrl}
                 afterUrl={resultUrl}
@@ -1259,53 +1249,55 @@ export default function ImageEditor({
                   After · long-press to save
                 </figcaption>
               </figure>
-            </div>
-          ) : (
-            <div className="mb-4 flex flex-col gap-4 md:flex-row">
-              <figure className="relative max-h-[min(45vh,320px)] flex-1 overflow-hidden rounded-xl bg-muted md:max-h-none">
-                <Image
-                  src={beforeUrl}
-                  alt="Original photo before object removal"
-                  width={600}
-                  height={450}
-                  className="h-full w-full object-contain"
-                  unoptimized
-                />
-                {showMaskOnBefore && maskPreviewUrl ? (
+            </TabsContent>
+
+            <TabsContent value="side">
+              <div className="flex flex-col gap-4 sm:flex-row">
+                <figure className="relative max-h-[50vh] flex-1 overflow-hidden rounded-xl bg-muted sm:max-h-[500px]">
                   <Image
-                    src={maskPreviewUrl}
-                    alt=""
+                    src={beforeUrl}
+                    alt="Original photo before object removal"
                     width={600}
                     height={450}
-                    className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-50"
+                    className="h-full w-full object-contain"
                     unoptimized
                   />
-                ) : null}
-                <Badge
-                  aria-hidden="true"
-                  className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60"
-                >
-                  Before
-                </Badge>
-              </figure>
-              <figure className="relative max-h-[min(45vh,320px)] flex-1 overflow-hidden rounded-xl bg-muted md:max-h-none">
-                <Image
-                  src={resultUrl}
-                  alt="Photo after object removal — long-press to save on mobile"
-                  width={600}
-                  height={450}
-                  className="h-full w-full object-contain"
-                  unoptimized
-                />
-                <Badge
-                  aria-hidden="true"
-                  className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80"
-                >
-                  After
-                </Badge>
-              </figure>
-            </div>
-          )}
+                  {showMaskOnBefore && maskPreviewUrl ? (
+                    <Image
+                      src={maskPreviewUrl}
+                      alt=""
+                      width={600}
+                      height={450}
+                      className="pointer-events-none absolute inset-0 h-full w-full object-contain opacity-50"
+                      unoptimized
+                    />
+                  ) : null}
+                  <Badge
+                    aria-hidden="true"
+                    className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60"
+                  >
+                    Before
+                  </Badge>
+                </figure>
+                <figure className="relative max-h-[50vh] flex-1 overflow-hidden rounded-xl bg-muted sm:max-h-[500px]">
+                  <Image
+                    src={resultUrl}
+                    alt="Photo after object removal — long-press to save on mobile"
+                    width={600}
+                    height={450}
+                    className="h-full w-full object-contain"
+                    unoptimized
+                  />
+                  <Badge
+                    aria-hidden="true"
+                    className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80"
+                  >
+                    After
+                  </Badge>
+                </figure>
+              </div>
+            </TabsContent>
+          </Tabs>
 
           <div
             ref={actionsRef}
@@ -1391,7 +1383,7 @@ export default function ImageEditor({
             aria-label="Brush mask editor"
             aria-describedby={statusId}
             className={cn(
-              "relative mx-auto mb-4 max-h-[min(60vh,420px)] w-full max-w-full touch-none overflow-hidden overscroll-none rounded-xl bg-muted sm:max-h-[70vh]",
+              "relative mx-auto mb-4 max-h-[50vh] w-full max-w-full touch-none overflow-hidden overscroll-none rounded-xl bg-muted sm:max-h-[500px]",
               loading && "pointer-events-none opacity-80"
             )}
             style={

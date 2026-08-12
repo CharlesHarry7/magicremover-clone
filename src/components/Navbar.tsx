@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { MenuIcon } from "lucide-react";
 
-import SafeImage from "@/components/SafeImage";
+import BrandLogo from "@/components/BrandLogo";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import {
@@ -33,14 +33,7 @@ export default function Navbar() {
     <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
       <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-2">
-          <SafeImage
-            src="/logo.webp"
-            alt="MagicRemover"
-            width={32}
-            height={32}
-            compact
-            className="h-8 w-8"
-          />
+          <BrandLogo size={32} className="h-8 w-8" priority />
           <span className="text-lg font-bold">MagicRemover</span>
         </Link>
 
@@ -87,14 +80,7 @@ export default function Navbar() {
           <SheetContent side="right" className="w-[min(100%,20rem)]">
             <SheetHeader>
               <SheetTitle className="flex items-center gap-2">
-                <SafeImage
-                  src="/logo.webp"
-                  alt=""
-                  width={24}
-                  height={24}
-                  compact
-                  className="h-6 w-6"
-                />
+                <BrandLogo size={24} className="h-6 w-6" decorative />
                 MagicRemover
               </SheetTitle>
               <SheetDescription className="sr-only">

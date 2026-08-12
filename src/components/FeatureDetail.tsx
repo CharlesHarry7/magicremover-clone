@@ -38,6 +38,8 @@ export default function FeatureDetail({
             width={600}
             height={450}
             sizes="(max-width: 640px) 100vw, 400px"
+            loadingLabel="示例加载中"
+            fallbackLabel="示例暂不可用"
             className="h-full w-full object-cover"
           />
           <Badge className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60">
@@ -51,6 +53,8 @@ export default function FeatureDetail({
             width={600}
             height={450}
             sizes="(max-width: 640px) 100vw, 400px"
+            loadingLabel="示例加载中"
+            fallbackLabel="示例暂不可用"
             className="h-full w-full object-cover"
           />
           <Badge className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80">
