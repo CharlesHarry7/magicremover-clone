@@ -6,9 +6,19 @@ export const FREE_EDITS = 2;
 /** Canonical quota story — keep every visible string in sync with FREE_EDITS. */
 export const FREE_EDITS_STORY = `${FREE_EDITS} free edits per browser session (refresh resets)`;
 
-/** Editor/upload badge: remaining session free demo edits (not forever-free / not daily). */
-export function remainingEditsLabel(left: number, total: number = FREE_EDITS) {
-  return `剩余 ${left}/${total} 次免费`;
+/**
+ * Editor/upload badge: remaining session free edits (not forever-free / not daily).
+ * EN UI → “Remaining X/Y free”; ZH product form is「剩余 X/Y 次免费」.
+ */
+export function remainingEditsLabel(
+  left: number,
+  total: number = FREE_EDITS,
+  locale: "en" | "zh" = "en"
+) {
+  if (locale === "zh") {
+    return `剩余 ${left}/${total} 次免费`;
+  }
+  return `Remaining ${left}/${total} free`;
 }
 
 /** Max upload size accepted by the editor. */

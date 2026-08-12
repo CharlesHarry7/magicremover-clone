@@ -136,10 +136,10 @@ export default function Hero() {
     <section
       id="try"
       aria-labelledby={headingId}
-      className="scroll-mt-24 bg-gradient-to-b from-primary-light/60 to-background px-4 py-10 sm:py-16"
+      className="scroll-mt-24 bg-gradient-to-b from-primary-light/60 to-background px-4 py-6 sm:py-12"
     >
       <div className="mx-auto max-w-6xl">
-        <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
+        <div className="mb-4 flex flex-wrap items-center justify-center gap-2">
           <Badge
             variant="secondary"
             className="bg-success/10 text-success hover:bg-success/10"
@@ -162,24 +162,24 @@ export default function Hero() {
 
         <h1
           id={headingId}
-          className="mx-auto mb-4 max-w-3xl text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
+          className="mx-auto mb-3 max-w-3xl text-center text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl"
         >
           AI Object Remover — Erase Anything from Your Photos
         </h1>
 
-        <p className="mx-auto mb-10 max-w-2xl text-center text-base leading-relaxed text-muted-foreground">
+        <p className="mx-auto mb-6 max-w-2xl text-center text-base leading-relaxed text-muted-foreground">
           Brush any object, person, text, or watermark out of a photo — no
           signup and no watermark on the result. This page is a free demo:{" "}
           {FREE_EDITS_STORY}.
         </p>
 
-        <div className="mb-8 flex w-full max-w-full items-center gap-2 sm:justify-center">
-          <div className="min-w-0 flex-1 overflow-x-auto sm:flex-none sm:overflow-visible">
+        <div className="mb-5 flex w-full max-w-full items-center gap-2 sm:justify-center">
+          <div className="min-w-0 flex-1 overflow-x-auto overscroll-x-contain [-webkit-overflow-scrolling:touch] sm:flex-none">
             <ToggleGroup
               variant="outline"
               spacing={1}
               aria-label="Demo removal category"
-              className="flex w-max flex-nowrap justify-start gap-1 rounded-full bg-muted/80 p-1 sm:w-fit sm:flex-wrap sm:justify-center"
+              className="flex w-max flex-nowrap justify-start gap-1 rounded-full bg-muted/80 p-1"
               value={mode === "demo" ? [activeTab] : []}
               onValueChange={(group) => {
                 const next = group[0] as DemoTab | undefined;
@@ -292,7 +292,7 @@ export default function Hero() {
                     aria-label="Upload a photo to open the object remover"
                     aria-describedby={statusId}
                   />
-                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                  <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
                     <Badge
                       variant="secondary"
                       className="bg-success/10 text-success hover:bg-success/10"
@@ -301,6 +301,7 @@ export default function Hero() {
                       {remainingEditsLabel(FREE_EDITS)}
                     </Badge>
                     <Button
+                      type="button"
                       variant="ghost"
                       size="sm"
                       onClick={() => openEditor()}

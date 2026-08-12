@@ -191,7 +191,9 @@ test("pickFirstFile reads index 0", () => {
   assert.equal(pickFirstFile(undefined), null);
 });
 
-test("remainingEditsLabel uses 剩余 X/Y 次免费", () => {
-  assert.equal(remainingEditsLabel(2, 2), "剩余 2/2 次免费");
-  assert.equal(remainingEditsLabel(1), "剩余 1/2 次免费");
+test("remainingEditsLabel EN/ZH quota badge copy", () => {
+  assert.equal(remainingEditsLabel(2, 2), "Remaining 2/2 free");
+  assert.equal(remainingEditsLabel(1), "Remaining 1/2 free");
+  assert.equal(remainingEditsLabel(2, 2, "zh"), "剩余 2/2 次免费");
+  assert.equal(remainingEditsLabel(1, 2, "zh"), "剩余 1/2 次免费");
 });
