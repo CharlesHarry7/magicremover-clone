@@ -81,6 +81,11 @@ if (assets.run_worker_first === true) {
     "assets.run_worker_first must not be true globally — static CSS/JS would hit the Worker first and commonly 404. Keep default false (ASSETS first)."
   );
 }
+if (assets.not_found_handling && assets.not_found_handling !== "none") {
+  fail(
+    `assets.not_found_handling must be "none" (or omitted). "${assets.not_found_handling}" would serve HTML (SPA or 404.html) for missing /_next/static/* instead of the Worker hard-404.`
+  );
+}
 
 const flags = wrangler.compatibility_flags;
 if (!Array.isArray(flags) || !flags.includes("nodejs_compat")) {
@@ -91,5 +96,6 @@ console.log("check-wrangler-opennext: OK");
 console.log('  next.config: no assetPrefix/basePath');
 console.log('  wrangler: main=.open-next/worker.js');
 console.log('  wrangler: assets.directory=.open-next/assets binding=ASSETS');
+console.log('  wrangler: run_worker_first=false not_found_handling=none (no SPA HTML fallback)');
 console.log("  deploy: npm run deploy | npm run upload  # Worker + ASSETS together");
 console.log("  never: Pages git / bare next build / assets-only for full app");

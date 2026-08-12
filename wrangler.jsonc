@@ -17,6 +17,7 @@
 	//   - use Cloudflare Pages git / `pages deploy` / bare `next build` alone
 	//   - publish Worker without assets (or assets without Worker) for the full app
 	//   - set assets.run_worker_first: true globally (CSS/JS must hit ASSETS first)
+	//   - set assets.not_found_handling to SPA / 404-page (would return HTML for missing JS)
 	//
 	// /_next/static/* routing: ASSETS hit serves the file (200 + MIME).
 	// ASSETS miss invokes the Worker; patch-opennext-static-404.mjs injects an
@@ -44,7 +45,10 @@
 		// Explicit: platform serves matching ASSETS (CSS/JS/media/cases) before the Worker.
 		// Default is false; keep it false so /_next/static/* never depends on SSR routing.
 		// ASSETS hit → file. ASSETS miss for /_next/static/* → Worker hard-404 (not HTML).
-		"run_worker_first": false
+		"run_worker_first": false,
+		// Never SPA / 404.html fallback. Missing /_next/static/* must reach the Worker
+		// hard-404 (text/plain), not an HTML document the browser will execute as JS.
+		"not_found_handling": "none"
 	},
 	"services": [
 		{

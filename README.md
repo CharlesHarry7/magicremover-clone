@@ -95,22 +95,20 @@ OpenNext on Workers needs **one** publish that includes:
 | Piece | Path / config |
 | --- | --- |
 | SSR Worker | `wrangler.jsonc` → `main: ".open-next/worker.js"` |
-| Static assets | `wrangler.jsonc` → `assets.directory: ".open-next/assets"`, `binding: "ASSETS"`, `run_worker_first: false` |
+| Static assets | `wrangler.jsonc` → `assets.directory: ".open-next/assets"`, `binding: "ASSETS"`, `run_worker_first: false`, `not_found_handling: "none"` |
 
 When live `*.pages.dev` (or a partial Worker) serves HTML/SSR **without** uploading `.open-next/assets`, every `/_next/static/*` **404**s and the page never hydrates. Other broken edges:
 
 - `/` → **empty 404** with `_headers` (ASSETS answering; Worker not bound)
-- Mixed static **200**/**404** (stale/partial ASSETS vs current HTML hashes). Stale `/_next/static/*` hashes must **hard-404 as non-HTML** (not a Next HTML shell), or old cached pages execute HTML as JS.
+- Mixed static **200**/**404** (stale/partial ASSETS vs current HTML hashes). Confirmed on **workers.dev itself** (not only pages.dev): present hashed JS → **200** `text/javascript`; missing/stale `/_next/static/chunks/app/page-deadbeefdeadbeef.js` → **404** `text/html` Next/OpenNext shell (`x-opennext`). Stale hashes must **hard-404 as non-HTML**, or old cached pages execute HTML as JS.
 
 Fix: `npm run deploy` / `npm run upload` (OpenNext build + ASSETS together). Unbind legacy Pages git/`pages deploy` if it still owns `*.pages.dev`.
 
 ### How to open a working preview for QA
 
-**Prefer workers.dev — not pages.dev.** Current green Workers hostname (assets hydrate):
+**Prefer a version preview URL — not production workers.dev until this Worker is uploaded.** Production `https://magicremover-clone.guochao950518.workers.dev` still returns **404 + HTML** for missing hashed chunks (repro). Present CSS/JS on that host can still 200.
 
-`https://magicremover-clone.guochao950518.workers.dev`
-
-(`npm run smoke:deployed -- https://magicremover-clone.guochao950518.workers.dev` → home/CSS/cases **200**. Do not use `magicremover-clone.pages.dev` until Pages is unbound + OpenNext redeployed.)
+(`npm run smoke:deployed -- <version-preview-url>` → home/CSS/cases **200** and `page-deadbeefdeadbeef.js` **404** non-HTML. Do not use `magicremover-clone.pages.dev` until Pages is unbound + OpenNext redeployed.)
 
 | Goal | Command | Notes |
 | --- | --- | --- |
@@ -152,7 +150,20 @@ npx wrangler secret put REPLICATE_API_TOKEN
 | `npm run deploy` | Build + asset gate + **Workers deploy** (uploads Worker **and** ASSETS) |
 | `npm run upload` | Build + asset gate + `wrangler versions upload` (non-promoting preview version) |
 | `npm run deploy:preview` | Same as upload with `--preview-alias preview` |
-| Post-deploy smoke | `node scripts/smoke-deployed-assets.mjs https://YOUR_PREVIEW_URL` |
+| Post-deploy smoke | `npm run smoke:deployed -- https://YOUR_VERSION_PREVIEW_URL` (present assets 200; `page-deadbeefdeadbeef.js` 404 non-HTML) |
+
+**Verify on a version preview URL** (does not promote production):
+
+```bash
+npm run upload
+# wrangler prints a version preview, e.g.
+# https://<version-id>-magicremover-clone.<account>.workers.dev
+npm run smoke:deployed -- https://<version-preview-url>
+# Expect:
+#   GET / → 200 text/html
+#   current /_next/static/chunks/app/page-*.js → 200 text/javascript
+#   /_next/static/chunks/app/page-deadbeefdeadbeef.js → 404 text/plain (NOT text/html)
+```
 
 **Do not** use Cloudflare Pages git integration with `next build` / `pages deploy` alone. That surface often publishes HTML/Worker without the OpenNext `.open-next/assets` bundle, which looks like:
 
