@@ -1,0 +1,42 @@
+const benefits = [
+  {
+    title: "100% free",
+    description: "5 edits every day, forever. No credit card, no trial, no paywall.",
+  },
+  {
+    title: "No signup",
+    description: "Open the page and start editing. Your browser tracks your daily count.",
+  },
+  {
+    title: "High quality",
+    description: "Backed by a state-of-the-art inpainting model that reconstructs background detail.",
+  },
+  {
+    title: "Privacy-first",
+    description: "We don't store your uploads or results. Images leave memory after each request.",
+  },
+];
+
+export default function WhyUs() {
+  return (
+    <section className="px-4 py-16">
+      <div className="mx-auto max-w-4xl">
+        <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
+          Why MagicRemover
+        </h2>
+        <h3 className="mb-10 text-center text-lg text-muted">
+          Free, fast, and refreshingly simple.
+        </h3>
+
+        <div className="grid gap-6 sm:grid-cols-2">
+          {benefits.map((item) => (
+            <div key={item.title} className="rounded-2xl border border-border p-6">
+              <h4 className="mb-2 font-semibold">{item.title}</h4>
+              <p className="text-sm leading-relaxed text-muted">{item.description}</p>
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+}
