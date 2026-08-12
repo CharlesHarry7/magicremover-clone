@@ -1,82 +1,138 @@
 import { NextResponse } from "next/server";
 
+/**
+ * Object removal via Replicate (LaMa-based image-object-removal).
+ * Requires REPLICATE_API_TOKEN in the Worker env / .dev.vars.
+ */
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
-const USE_AI = !!REPLICATE_API_TOKEN;
+const REPLICATE_MODEL = "dpakkk/image-object-removal";
 
-async function callReplicate(imageBase64: string, maskBase64: string) {
-  const response = await fetch("https://api.replicate.com/v1/predictions", {
-    method: "POST",
-    headers: {
-      Authorization: `Token ${REPLICATE_API_TOKEN}`,
-      "Content-Type": "application/json",
-      Prefer: "wait",
+function missingKeyResponse() {
+  return NextResponse.json(
+    {
+      error:
+        "Object removal is not configured. Set the REPLICATE_API_TOKEN environment variable (Cloudflare Worker secret or .dev.vars) and redeploy.",
+      code: "MISSING_API_KEY",
     },
-    body: JSON.stringify({
-      version: "95b7223104132402a9ae91cc677285bc5eb997834bd2349fa0231c3cb1f685e7",
-      input: {
-        image: imageBase64,
-        mask: maskBase64,
-        prompt: "high quality, seamless, realistic",
-        negative_prompt: "blurry, distorted, low quality",
-        num_inference_steps: 25,
-        guidance_scale: 7.5,
-      },
-    }),
-  });
-
-  if (!response.ok) {
-    const text = await response.text();
-    throw new Error(`Replicate API error: ${response.status} ${text}`);
-  }
-
-  const data = await response.json();
-
-  if (data.status === "succeeded") {
-    return data.output;
-  }
-
-  if (data.status === "processing" || data.status === "starting") {
-    const getUrl = data.urls?.get;
-    if (!getUrl) throw new Error("No poll URL returned");
-
-    for (let i = 0; i < 30; i++) {
-      await new Promise((r) => setTimeout(r, 2000));
-      const pollRes = await fetch(getUrl, {
-        headers: { Authorization: `Token ${REPLICATE_API_TOKEN}` },
-      });
-      const pollData = await pollRes.json();
-      if (pollData.status === "succeeded") return pollData.output;
-      if (pollData.status === "failed") throw new Error(pollData.error || "Prediction failed");
-    }
-    throw new Error("Prediction timed out");
-  }
-
-  throw new Error(`Unexpected status: ${data.status}`);
+    { status: 503 }
+  );
 }
 
-function fallbackInpaint(imageBase64: string): string {
-  return imageBase64;
+async function callReplicate(imageBase64: string, maskBase64: string): Promise<string> {
+  const createRes = await fetch(
+    `https://api.replicate.com/v1/models/${REPLICATE_MODEL}/predictions`,
+    {
+      method: "POST",
+      headers: {
+        Authorization: `Bearer ${REPLICATE_API_TOKEN}`,
+        "Content-Type": "application/json",
+        Prefer: "wait",
+      },
+      body: JSON.stringify({
+        input: {
+          image: imageBase64,
+          mask: maskBase64,
+        },
+      }),
+    }
+  );
+
+  if (!createRes.ok) {
+    const text = await createRes.text();
+    if (createRes.status === 401 || createRes.status === 403) {
+      throw new Error(
+        "Replicate rejected the API token. Check that REPLICATE_API_TOKEN is valid."
+      );
+    }
+    throw new Error(`Replicate API error: ${createRes.status} ${text.slice(0, 300)}`);
+  }
+
+  let data = await createRes.json();
+
+  if (data.status === "succeeded") {
+    return normalizeOutput(data.output);
+  }
+
+  if (data.status === "failed" || data.status === "canceled") {
+    throw new Error(data.error || `Prediction ${data.status}`);
+  }
+
+  const getUrl = data.urls?.get as string | undefined;
+  if (!getUrl) {
+    throw new Error("Replicate did not return a result or poll URL");
+  }
+
+  for (let i = 0; i < 45; i++) {
+    await new Promise((r) => setTimeout(r, 2000));
+    const pollRes = await fetch(getUrl, {
+      headers: { Authorization: `Bearer ${REPLICATE_API_TOKEN}` },
+    });
+    if (!pollRes.ok) {
+      throw new Error(`Failed to poll prediction: ${pollRes.status}`);
+    }
+    data = await pollRes.json();
+    if (data.status === "succeeded") return normalizeOutput(data.output);
+    if (data.status === "failed" || data.status === "canceled") {
+      throw new Error(data.error || `Prediction ${data.status}`);
+    }
+  }
+
+  throw new Error("Prediction timed out. Try a smaller image or try again.");
+}
+
+function normalizeOutput(output: unknown): string {
+  if (typeof output === "string") return output;
+  if (Array.isArray(output) && typeof output[0] === "string") return output[0];
+  if (output && typeof output === "object") {
+    const obj = output as Record<string, unknown>;
+    if (typeof obj.url === "string") return obj.url;
+    if (typeof obj.image === "string") return obj.image;
+    if (typeof obj.output === "string") return obj.output;
+  }
+  throw new Error("Unexpected response format from Replicate");
+}
+
+async function toDataUrl(result: string): Promise<string> {
+  if (result.startsWith("data:image/")) return result;
+
+  const res = await fetch(result);
+  if (!res.ok) {
+    // Fall back to the remote URL if fetch fails; client may still display it.
+    return result;
+  }
+  const contentType = res.headers.get("content-type") || "image/png";
+  const buffer = await res.arrayBuffer();
+  const base64 = Buffer.from(buffer).toString("base64");
+  return `data:${contentType};base64,${base64}`;
 }
 
 export async function POST(request: Request) {
+  if (!REPLICATE_API_TOKEN) {
+    return missingKeyResponse();
+  }
+
   try {
-    const { image, mask } = await request.json();
+    const body = await request.json();
+    const image = body?.image;
+    const mask = body?.mask;
 
-    if (!image || !mask) {
-      return NextResponse.json({ error: "Image and mask are required" }, { status: 400 });
+    if (typeof image !== "string" || typeof mask !== "string") {
+      return NextResponse.json(
+        { error: "Image and mask are required as base64 data URLs" },
+        { status: 400 }
+      );
     }
 
-    let result: string;
-
-    if (USE_AI) {
-      result = await callReplicate(image, mask);
-      if (Array.isArray(result)) {
-        result = typeof result[0] === "string" ? result[0] : result[0]?.image || result[0];
-      }
-    } else {
-      result = fallbackInpaint(image);
+    if (!image.startsWith("data:image/") || !mask.startsWith("data:image/")) {
+      return NextResponse.json(
+        { error: "Image and mask must be data URLs (data:image/...)" },
+        { status: 400 }
+      );
     }
 
+    const resultUrl = await callReplicate(image, mask);
+    // Fetch server-side so the client can download without CORS issues.
+    const result = await toDataUrl(resultUrl);
     return NextResponse.json({ result });
   } catch (error) {
     console.error("Remove object error:", error);
