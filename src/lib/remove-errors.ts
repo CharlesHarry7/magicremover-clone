@@ -5,8 +5,7 @@ export const SERVICE_UNAVAILABLE_EN =
   "Object removal isn’t available in this preview right now. You can still upload and brush a mask — try Remove again later.";
 
 /** Neutral JSON `error` for missing-key 503 — never include env-var names. */
-export const SERVICE_UNAVAILABLE_API_ERROR =
-  "Object removal is not available right now.";
+export const SERVICE_UNAVAILABLE_API_ERROR = "Object removal is not available.";
 
 /** Leaked provider/env names that must never appear in the UI. */
 const SECRET_LEAK =

@@ -37,7 +37,7 @@ class ApiError extends Error {
 
 function missingKeyResponse() {
   console.error(
-    "MISSING_API_KEY: removal provider token is not set; configure it in the Worker secrets and redeploy."
+    "MISSING_API_KEY: set REPLICATE_API_TOKEN in .env.local, .dev.vars, or wrangler secret, then restart/redeploy."
   );
   return NextResponse.json(
     {
@@ -62,15 +62,18 @@ function errorResponse(
 ) {
   if (code === "MISSING_API_KEY" || status === 503) {
     return NextResponse.json(
-      { error: SERVICE_UNAVAILABLE_API_ERROR, code: "MISSING_API_KEY", ...extras },
+      {
+        error: SERVICE_UNAVAILABLE_API_ERROR,
+        code: "MISSING_API_KEY",
+      },
       { status: 503 }
     );
   }
   const safeCode = clientSafeCode(code);
-  const safeError =
-    mentionsSecret(error) || mentionsSecret(code)
-      ? "Removal failed. Please try again."
-      : error;
+  const leaked = mentionsSecret(error) || mentionsSecret(code);
+  const safeError = leaked
+    ? "Removal failed. Please try again."
+    : error;
   return NextResponse.json(
     { error: safeError, code: safeCode, ...extras },
     { status }
