@@ -1,0 +1,1 @@
+Copy `xixi-remote-ctl.sh` to `/Users/x/WorkBuddy/codex-handoffs/agent-remote/ctl.sh`, run `chmod +x` on it, then use `./ctl.sh status` (or `opencode` / `workbuddy` / `codex` with an optional message) to check or launch Daniel’s Mac remote-control hub for assistant “xixi”.
