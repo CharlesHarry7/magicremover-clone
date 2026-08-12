@@ -60,7 +60,7 @@ export default function Navbar() {
             render={<Link href="/#try" />}
             onClick={(e) => onHashLinkClick("/#try", e)}
           >
-            Try demo
+            Try free
           </Button>
         </div>
 
@@ -115,7 +115,7 @@ export default function Navbar() {
                   setMobileOpen(false);
                 }}
               >
-                Try demo
+                Try free
               </Button>
             </div>
           </SheetContent>

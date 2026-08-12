@@ -157,7 +157,7 @@ export default function Hero() {
             variant="secondary"
             className="bg-success/10 text-success hover:bg-success/10"
           >
-            HD download in demo
+            HD download
           </Badge>
         </div>
 

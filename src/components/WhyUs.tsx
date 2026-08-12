@@ -3,7 +3,7 @@ import { FREE_EDITS_STORY } from "@/lib/remove-limits";
 
 const benefits = [
   {
-    title: "Session demo",
+    title: "Free session",
     description: `${FREE_EDITS_STORY} — no credit card and no trial wall. Not an unlimited forever-free quota.`,
   },
   {
@@ -30,7 +30,7 @@ export default function WhyUs() {
           Why MagicRemover
         </h2>
         <p className="mb-10 text-center text-lg text-muted-foreground">
-          A free session demo — fast, and honest about limits.
+          A free session — fast, and honest about limits.
         </p>
 
         <div className="grid gap-6 sm:grid-cols-2">

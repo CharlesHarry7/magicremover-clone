@@ -4,11 +4,11 @@
 export const FREE_EDITS = 2;
 
 /** Canonical quota story — keep every visible string in sync with FREE_EDITS. */
-export const FREE_EDITS_STORY = `${FREE_EDITS} demo edits per browser session (refresh resets)`;
+export const FREE_EDITS_STORY = `${FREE_EDITS} free edits per browser session (refresh resets)`;
 
-/** Editor/upload badge: remaining session demo edits (not forever-free / not daily). */
+/** Editor/upload badge: remaining session free demo edits (not forever-free / not daily). */
 export function remainingEditsLabel(left: number, total: number = FREE_EDITS) {
-  return `剩余 ${left}/${total} 次演示`;
+  return `剩余 ${left}/${total} 次免费`;
 }
 
 /** Max upload size accepted by the editor. */

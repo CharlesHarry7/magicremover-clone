@@ -780,7 +780,7 @@ export default function ImageEditor({
 
     if (sessionLeft <= 0) {
       toast.error(
-        `No demo edits left in this session. Refresh the page to reset (${FREE_EDITS_STORY}).`
+        `No free edits left in this session. Refresh the page to reset (${FREE_EDITS_STORY}).`
       );
       return;
     }
@@ -1543,7 +1543,7 @@ export default function ImageEditor({
           {!loading && (sessionLeft <= 0 || !hasMask) ? (
             <p className="mt-2 text-center text-xs text-muted-foreground">
               {sessionLeft <= 0
-                ? `No demo edits left. ${FREE_EDITS_STORY}.`
+                ? `No free edits left. ${FREE_EDITS_STORY}.`
                 : "Brush a mask first, then remove. One-finger paint; Undo with Ctrl/⌘+Z."}
             </p>
           ) : hasMask && !loading ? (
