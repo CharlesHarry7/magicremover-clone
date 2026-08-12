@@ -200,10 +200,13 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
     const ctx = maskCanvas.getContext("2d");
     if (!ctx) return;
 
-    const stack = undoStackRef.current;
-    if (stack.length === 0) return;
-    const lastState = stack.pop()!;
-    ctx.putImageData(lastState, 0, 0);
+    setDrawingHistory((prev) => {
+      if (prev.length === 0) return prev;
+      const newHistory = [...prev];
+      const lastState = newHistory.pop()!;
+      ctx.putImageData(lastState, 0, 0);
+      return newHistory;
+    });
   }, []);
 
   const buildBinaryMaskDataUrl = useCallback(() => {
@@ -278,10 +281,6 @@ export default function ImageEditor({ onResult, initialFile }: ImageEditorProps)
       const data = await res.json();
 
       if (!res.ok) {
-        if (res.status === 503) {
-          setNoApiKey(true);
-          throw new Error(data.error || "AI service not configured");
-        }
         throw new Error(data.error || "Failed to process image");
       }
 
