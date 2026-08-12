@@ -9,6 +9,8 @@
 	// DO NOT use Cloudflare Pages git integration with `next build` only —
 	// that publishes HTML/Worker without the OpenNext ASSETS bundle and yields
 	// HTML 200 + /_next/static/* 404 (and /cases/* 404). Prefer Workers.
+	// If magicremover-clone.pages.dev is still bound to a legacy Pages project,
+	// disconnect/delete that Pages project in the dashboard, then redeploy here.
 	"main": ".open-next/worker.js",
 	"name": "magicremover-clone",
 	"compatibility_date": "2026-08-12",

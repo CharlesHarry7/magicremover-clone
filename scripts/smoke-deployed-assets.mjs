@@ -6,9 +6,13 @@
  * Usage: node scripts/smoke-deployed-assets.mjs <baseUrl>
  * Example: node scripts/smoke-deployed-assets.mjs https://example.workers.dev
  */
-const baseUrl = (process.argv[2] || "").replace(/\/$/, "");
+const args = process.argv.slice(2);
+const assetsOnly = args.includes("--assets-only");
+const baseUrl = (args.find((a) => !a.startsWith("--")) || "").replace(/\/$/, "");
 if (!baseUrl) {
-  console.error("Usage: node scripts/smoke-deployed-assets.mjs <baseUrl>");
+  console.error(
+    "Usage: node scripts/smoke-deployed-assets.mjs <baseUrl> [--assets-only]"
+  );
   process.exit(2);
 }
 
@@ -21,38 +25,51 @@ async function headOrGet(url) {
   return res;
 }
 
-const home = await headOrGet(baseUrl + "/");
-const homeCt = home.headers.get("content-type") || "";
-console.log(`GET / -> ${home.status} (${homeCt})`);
-if (!home.ok || !homeCt.includes("text/html")) {
-  console.error("smoke-deployed-assets: homepage did not return HTML 200");
-  process.exit(1);
-}
+let samples = ["/cases/remove-object-before02.webp", "/logo.webp"];
 
-const html = await (await fetch(baseUrl + "/")).text();
-const refs = [
-  ...new Set(
-    (html.match(/\/_next\/static\/[A-Za-z0-9._\-\/]+/g) || []).map((p) =>
-      p.split("?")[0]
-    )
-  ),
-];
+if (assetsOnly) {
+  // Assets-only Workers have no SSR HTML; discover CSS from a known build layout
+  // by probing the first CSS href pattern isn't available — caller should pass
+  // paths via SMOKE_CSS env, else we only check cases/logo + optional SMOKE_CSS.
+  const cssPath = process.env.SMOKE_CSS;
+  if (cssPath) samples = [cssPath, ...samples];
+  console.log(`assets-only mode @ ${baseUrl}`);
+} else {
+  const home = await headOrGet(baseUrl + "/");
+  const homeCt = home.headers.get("content-type") || "";
+  console.log(`GET / -> ${home.status} (${homeCt})`);
+  if (!home.ok || !homeCt.includes("text/html")) {
+    console.error("smoke-deployed-assets: homepage did not return HTML 200");
+    process.exit(1);
+  }
 
-const css = refs.filter((p) => p.endsWith(".css"));
-const js = refs.filter((p) => p.endsWith(".js"));
-const media = refs.filter((p) => p.includes("/media/"));
+  const html = await (await fetch(baseUrl + "/")).text();
+  const refs = [
+    ...new Set(
+      (html.match(/\/_next\/static\/[A-Za-z0-9._\-\/]+/g) || []).map((p) =>
+        p.split("?")[0]
+      )
+    ),
+  ];
 
-const samples = [
-  ...css.slice(0, 2),
-  ...js.slice(0, 3),
-  ...media.slice(0, 2),
-  "/cases/remove-object-before02.webp",
-  "/logo.webp",
-];
+  const css = refs.filter((p) => p.endsWith(".css"));
+  const js = refs.filter((p) => p.endsWith(".js"));
+  const media = refs.filter((p) => p.includes("/media/"));
 
-if (css.length === 0) {
-  console.error("smoke-deployed-assets: homepage HTML references no CSS under /_next/static");
-  process.exit(1);
+  samples = [
+    ...css.slice(0, 2),
+    ...js.slice(0, 3),
+    ...media.slice(0, 2),
+    "/cases/remove-object-before02.webp",
+    "/logo.webp",
+  ];
+
+  if (css.length === 0) {
+    console.error(
+      "smoke-deployed-assets: homepage HTML references no CSS under /_next/static"
+    );
+    process.exit(1);
+  }
 }
 
 let failed = 0;

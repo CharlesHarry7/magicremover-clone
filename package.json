@@ -14,6 +14,7 @@
     "deploy": "opennextjs-cloudflare build && npm run check:assets && opennextjs-cloudflare deploy",
     "upload": "opennextjs-cloudflare build && npm run check:assets && opennextjs-cloudflare upload",
     "deploy:preview": "opennextjs-cloudflare build && npm run check:assets && opennextjs-cloudflare upload -- --preview-alias preview",
+    "preview:assets": "opennextjs-cloudflare build && npm run check:assets && wrangler deploy --temporary -c wrangler.assets-preview.jsonc",
     "smoke:deployed": "node scripts/smoke-deployed-assets.mjs",
     "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts"
   },

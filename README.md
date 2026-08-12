@@ -123,6 +123,36 @@ npx wrangler secret put REPLICATE_API_TOKEN
 
 HTML 200 ≠ usable. Always deploy via `opennextjs-cloudflare deploy` / `npm run deploy` so ASSETS is uploaded with the Worker.
 
+### Disconnect legacy Pages (required for `*.pages.dev`)
+
+`magicremover-clone.pages.dev` currently shows the failure mode above (HTML/SSR decoupled from `.open-next/assets`). That hostname is almost certainly still bound to a **legacy Cloudflare Pages** git/static project (or a Worker publish that omitted ASSETS).
+
+In the Cloudflare dashboard:
+
+1. **Workers & Pages** → open any **Pages** project named like `magicremover-clone`
+2. Disable **git integration** / stop automatic Pages builds (`next build` / `pages deploy`)
+3. Prefer deleting the Pages project **or** disconnecting the `*.pages.dev` route so it cannot shadow Workers
+4. Redeploy the app as a **Worker + Assets** via `npm run deploy` (this repo’s `wrangler.jsonc` — not `pages_build_output_dir`)
+5. Point custom domains / `*.pages.dev` aliases at the Worker if you still want that hostname — then run `npm run smoke:deployed -- https://…` and require CSS **200**
+
+Acceptance: `/_next/static/css/*.css` → **200** `text/css` (and referenced `/cases/*` → **200**). HTML 200 alone fails.
+
+### One-command preview (real Cloudflare account)
+
+```bash
+npm ci && npm run upload
+# then smoke the printed workers.dev / version preview URL:
+npm run smoke:deployed -- https://<preview-url>
+```
+
+Without account auth in CI/agents, an **assets-only** temporary Worker can still prove the ASSETS bundle:
+
+```bash
+npm run build:worker && npm run check:assets
+npx wrangler deploy --temporary -c wrangler.assets-preview.jsonc
+# local proof (no Turnstile): npx wrangler dev -c wrangler.assets-preview.jsonc
+```
+
 Expected URL patterns after a Workers deploy:
 
 - `https://magicremover-clone.<account>.workers.dev` (when `workers_dev` is enabled)
