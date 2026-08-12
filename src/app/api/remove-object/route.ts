@@ -1,7 +1,6 @@
 import { NextResponse } from "next/server";
 
 const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
-const USE_AI = !!REPLICATE_API_TOKEN;
 
 async function callReplicate(imageBase64: string, maskBase64: string) {
   const response = await fetch("https://api.replicate.com/v1/predictions", {
@@ -54,10 +53,6 @@ async function callReplicate(imageBase64: string, maskBase64: string) {
   throw new Error(`Unexpected status: ${data.status}`);
 }
 
-function fallbackInpaint(imageBase64: string): string {
-  return imageBase64;
-}
-
 export async function POST(request: Request) {
   try {
     const { image, mask } = await request.json();
@@ -66,15 +61,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Image and mask are required" }, { status: 400 });
     }
 
-    let result: string;
+    if (!REPLICATE_API_TOKEN) {
+      return NextResponse.json(
+        { error: "AI service not configured. Set REPLICATE_API_TOKEN environment variable." },
+        { status: 503 }
+      );
+    }
 
-    if (USE_AI) {
-      result = await callReplicate(image, mask);
-      if (Array.isArray(result)) {
-        result = typeof result[0] === "string" ? result[0] : result[0]?.image || result[0];
-      }
-    } else {
-      result = fallbackInpaint(image);
+    let result = await callReplicate(image, mask);
+    if (Array.isArray(result)) {
+      result = typeof result[0] === "string" ? result[0] : result[0]?.image || result[0];
     }
 
     return NextResponse.json({ result });

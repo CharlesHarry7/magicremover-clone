@@ -11,6 +11,7 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const maskCanvasRef = useRef<HTMLCanvasElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const undoStackRef = useRef<ImageData[]>([]);
 
   const [image, setImage] = useState<HTMLImageElement | null>(null);
   const [isDrawing, setIsDrawing] = useState(false);
@@ -18,10 +19,9 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
   const [resultUrl, setResultUrl] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [beforeUrl, setBeforeUrl] = useState<string>("");
-  const [maskUrl, setMaskUrl] = useState<string>("");
+  const [beforeUrl, setBeforeUrl] = useState("");
   const [dailyLeft, setDailyLeft] = useState(2);
-  const [drawingHistory, setDrawingHistory] = useState<ImageData[]>([]);
+  const [noApiKey, setNoApiKey] = useState(false);
 
   const drawDot = useCallback(
     (x: number, y: number) => {
@@ -70,7 +70,7 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
       const ctx = maskCanvas.getContext("2d");
       if (!ctx) return;
 
-      setDrawingHistory((prev) => [...prev, ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height)]);
+      undoStackRef.current.push(ctx.getImageData(0, 0, maskCanvas.width, maskCanvas.height));
       setIsDrawing(true);
       const { x, y } = getCanvasCoords(e);
       drawDot(x, y);
@@ -98,13 +98,10 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
     const ctx = maskCanvas.getContext("2d");
     if (!ctx) return;
 
-    setDrawingHistory((prev) => {
-      if (prev.length === 0) return prev;
-      const newHistory = [...prev];
-      const lastState = newHistory.pop()!;
-      ctx.putImageData(lastState, 0, 0);
-      return newHistory;
-    });
+    const stack = undoStackRef.current;
+    if (stack.length === 0) return;
+    const lastState = stack.pop()!;
+    ctx.putImageData(lastState, 0, 0);
   }, []);
 
   const handleClear = useCallback(() => {
@@ -113,57 +110,60 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
     const ctx = maskCanvas.getContext("2d");
     if (!ctx) return;
     ctx.clearRect(0, 0, maskCanvas.width, maskCanvas.height);
-    setDrawingHistory([]);
+    undoStackRef.current = [];
   }, []);
 
-  const handleFileUpload = useCallback((file: File) => {
-    if (!file.type.startsWith("image/")) {
-      setError("Please upload a JPG or PNG image.");
-      return;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      setError("File size must be under 10 MB.");
-      return;
-    }
+  const handleFileUpload = useCallback(
+    (file: File) => {
+      if (!file.type.startsWith("image/")) {
+        setError("Please upload a JPG or PNG image.");
+        return;
+      }
+      if (file.size > 10 * 1024 * 1024) {
+        setError("File size must be under 10 MB.");
+        return;
+      }
 
-    setError(null);
-    setResultUrl(null);
-    handleClear();
+      setError(null);
+      setResultUrl(null);
+      handleClear();
 
-    const reader = new FileReader();
-    reader.onload = (e) => {
-      const img = new window.Image();
-      img.onload = () => {
-        let w = img.width;
-        let h = img.height;
-        const maxDim = 1536;
-        if (w > maxDim || h > maxDim) {
-          const ratio = Math.min(maxDim / w, maxDim / h);
-          w = Math.round(w * ratio);
-          h = Math.round(h * ratio);
-        }
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        const img = new window.Image();
+        img.onload = () => {
+          let w = img.width;
+          let h = img.height;
+          const maxDim = 1536;
+          if (w > maxDim || h > maxDim) {
+            const ratio = Math.min(maxDim / w, maxDim / h);
+            w = Math.round(w * ratio);
+            h = Math.round(h * ratio);
+          }
 
-        const canvas = canvasRef.current;
-        const maskCanvas = maskCanvasRef.current;
-        if (!canvas || !maskCanvas) return;
+          const canvas = canvasRef.current;
+          const maskCanvas = maskCanvasRef.current;
+          if (!canvas || !maskCanvas) return;
 
-        canvas.width = w;
-        canvas.height = h;
-        maskCanvas.width = w;
-        maskCanvas.height = h;
+          canvas.width = w;
+          canvas.height = h;
+          maskCanvas.width = w;
+          maskCanvas.height = h;
 
-        const ctx = canvas.getContext("2d");
-        if (ctx) {
-          ctx.drawImage(img, 0, 0, w, h);
-        }
+          const ctx = canvas.getContext("2d");
+          if (ctx) {
+            ctx.drawImage(img, 0, 0, w, h);
+          }
 
-        setImage(img);
-        setBeforeUrl(e.target?.result as string);
+          setImage(img);
+          setBeforeUrl(e.target?.result as string);
+        };
+        img.src = e.target?.result as string;
       };
-      img.src = e.target?.result as string;
-    };
-    reader.readAsDataURL(file);
-  }, [handleClear]);
+      reader.readAsDataURL(file);
+    },
+    [handleClear]
+  );
 
   const handleDrop = useCallback(
     (e: React.DragEvent) => {
@@ -205,7 +205,6 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
     try {
       const imageDataUrl = canvas.toDataURL("image/jpeg", 0.9);
       const maskDataUrlStr = maskCanvas.toDataURL("image/png");
-      setMaskUrl(maskDataUrlStr);
 
       const res = await fetch("/api/remove-object", {
         method: "POST",
@@ -216,6 +215,10 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
       const data = await res.json();
 
       if (!res.ok) {
+        if (res.status === 503) {
+          setNoApiKey(true);
+          throw new Error(data.error || "AI service not configured");
+        }
         throw new Error(data.error || "Failed to process image");
       }
 
@@ -239,8 +242,11 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
     document.body.removeChild(a);
   }, [resultUrl]);
 
-  const handleReset = useCallback(() => {
+  const handleNewImage = useCallback(() => {
+    setImage(null);
     setResultUrl(null);
+    setError(null);
+    setNoApiKey(false);
     handleClear();
   }, [handleClear]);
 
@@ -281,16 +287,6 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
                 className="h-full w-full object-contain"
                 unoptimized
               />
-              {maskUrl && (
-                <Image
-                  src={maskUrl}
-                  alt="Mask"
-                  width={600}
-                  height={450}
-                  className="absolute inset-0 h-full w-full object-contain opacity-50"
-                  unoptimized
-                />
-              )}
               <span className="absolute left-2 top-2 rounded bg-black/60 px-2 py-0.5 text-xs text-white">Before</span>
             </div>
             <div className="relative flex-1 overflow-hidden rounded-xl bg-gray-100">
@@ -313,7 +309,7 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
               Download Result
             </button>
             <button
-              onClick={handleReset}
+              onClick={handleNewImage}
               className="rounded-lg border border-border px-6 py-2.5 text-sm font-semibold text-foreground transition-colors hover:bg-card"
             >
               Try Another
@@ -322,6 +318,23 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
         </div>
       ) : (
         <div>
+          <div className="mb-4 flex items-center justify-center gap-6 text-xs text-muted">
+            <span className="flex items-center gap-1.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-xs font-bold">1</span>
+              Upload
+            </span>
+            <span className="text-border">→</span>
+            <span className="flex items-center gap-1.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-primary text-white text-xs font-bold">2</span>
+              Brush
+            </span>
+            <span className="text-border">→</span>
+            <span className="flex items-center gap-1.5">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-muted text-white text-xs font-bold">3</span>
+              Remove
+            </span>
+          </div>
+
           <div className="relative mb-4 overflow-hidden rounded-xl bg-gray-100">
             <canvas ref={canvasRef} className="max-h-[500px] w-full object-contain" />
             <canvas
@@ -337,7 +350,7 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
             />
           </div>
 
-          <div className="mb-4 flex flex-wrap items-center gap-4">
+          <div className="mb-4 flex flex-wrap items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <span className="text-xs text-muted">Brush size</span>
               <input
@@ -363,16 +376,13 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
               >
                 Clear
               </button>
+              <button
+                onClick={handleNewImage}
+                className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:bg-card transition-colors"
+              >
+                New Image
+              </button>
             </div>
-            <button
-              onClick={() => {
-                setImage(null);
-                handleClear();
-              }}
-              className="rounded-lg border border-border px-3 py-1.5 text-xs text-muted hover:bg-card transition-colors"
-            >
-              New Image
-            </button>
           </div>
 
           <button
@@ -386,7 +396,7 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
                   <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
                 </svg>
-                Removing...
+                AI is removing objects...
               </span>
             ) : (
               "Remove Objects"
@@ -394,8 +404,24 @@ export default function ImageEditor({ onResult }: ImageEditorProps) {
           </button>
 
           {error && (
-            <p className="mt-3 text-center text-sm text-red-500">{error}</p>
+            <div className="mt-3 rounded-lg bg-red-50 p-3 text-center">
+              <p className="text-sm text-red-600">{error}</p>
+              {noApiKey && (
+                <p className="mt-1 text-xs text-red-400">
+                  Set up Replicate API key to enable AI removal. See README for instructions.
+                </p>
+              )}
+            </div>
           )}
+
+          <div className="mt-3 flex items-center justify-between text-xs text-muted">
+            <span className="rounded-full bg-success/10 px-2 py-0.5 font-medium text-success">
+              Free today {dailyLeft} / 2
+            </span>
+            {dailyLeft <= 0 && (
+              <span className="text-warning">Sign in for 2 more free edits</span>
+            )}
+          </div>
         </div>
       )}
     </div>
