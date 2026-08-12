@@ -10,48 +10,54 @@ import {
 } from "lucide-react";
 
 import { Card, CardContent, CardDescription, CardTitle } from "@/components/ui/card";
+import { hrefForDemoTab, type DemoTab } from "@/lib/demo-tabs";
 
-const removeTypes = [
+const removeTypes: {
+  title: string;
+  description: string;
+  tab: DemoTab;
+  icon: typeof UsersIcon;
+}[] = [
   {
     title: "Background People Remover",
     description:
       "Clear passers-by, tourists, and crowds from your photo without touching the subject.",
-    href: "#try",
+    tab: "People",
     icon: UsersIcon,
   },
   {
     title: "AI Object Remover",
     description:
       "Delete unwanted objects — cables, signs, trash, clutter — while the AI rebuilds the background.",
-    href: "#try",
+    tab: "Object",
     icon: Trash2Icon,
   },
   {
     title: "Remove Text from Image",
     description:
       "Erase captions, date stamps, subtitles, and burned-in labels while keeping the composition.",
-    href: "#try",
+    tab: "Text",
     icon: TypeIcon,
   },
   {
     title: "Remove Watermark from Photo",
     description:
       "Scrub © stamps, overlays, and signatures off images you own in one brush stroke.",
-    href: "#try",
+    tab: "Watermark",
     icon: ShieldCheckIcon,
   },
   {
     title: "Logo Remover",
     description:
       "Wipe brand logos, broadcast bugs, and sponsor badges out of photos and mockups.",
-    href: "#try",
+    tab: "Sticker",
     icon: ImageOffIcon,
   },
   {
     title: "Sticker & Emoji Remover",
     description:
       "Scrub stickers, emoji, and overlay graphics off screenshots, memes, and social posts.",
-    href: "#try",
+    tab: "Sticker",
     icon: SmileIcon,
   },
 ];
@@ -75,7 +81,11 @@ export default function RemoveTypes() {
           {removeTypes.map((item) => {
             const Icon = item.icon;
             return (
-              <Link key={item.title} href={item.href} className="group">
+              <Link
+                key={item.title}
+                href={hrefForDemoTab(item.tab)}
+                className="group"
+              >
                 <Card className="h-full transition-all hover:ring-primary/30">
                   <CardContent>
                     <div className="mb-3 flex h-10 w-10 items-center justify-center rounded-xl bg-primary-light text-primary transition-colors group-hover:bg-primary group-hover:text-primary-foreground">
@@ -95,7 +105,7 @@ export default function RemoveTypes() {
         </div>
         <p className="mt-8 flex items-center justify-center gap-2 text-xs text-muted-foreground">
           <EraserIcon className="h-3.5 w-3.5" />
-          Brush any of these in the editor above
+          Opens the matching demo tab in the editor above
         </p>
       </div>
     </section>

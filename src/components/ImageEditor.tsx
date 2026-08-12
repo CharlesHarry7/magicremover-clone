@@ -291,6 +291,8 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
   const [compareMode, setCompareMode] = useState<"side" | "slider">("slider");
   const [showMaskOnBefore, setShowMaskOnBefore] = useState(true);
   const [stageWidth, setStageWidth] = useState(0);
+  const [shareAvailable, setShareAvailable] = useState(false);
+  const [loadingSeconds, setLoadingSeconds] = useState(0);
 
   const maskHasPaint = useCallback(() => {
     const maskCanvas = maskCanvasRef.current;
@@ -394,6 +396,41 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
       cancelled = true;
     };
   }, [initialFile, handleFileUpload]);
+
+  useEffect(() => {
+    if (image) return;
+    const onPaste = (e: ClipboardEvent) => {
+      const data = e.clipboardData;
+      if (!data) return;
+      let file: File | null = null;
+      for (const item of Array.from(data.items)) {
+        if (item.kind === "file" && item.type.startsWith("image/")) {
+          file = item.getAsFile();
+          break;
+        }
+      }
+      if (!file && data.files?.[0]?.type.startsWith("image/")) {
+        file = data.files[0];
+      }
+      if (!file) return;
+      e.preventDefault();
+      handleFileUpload(file);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [image, handleFileUpload]);
+
+  useEffect(() => {
+    if (!loading) {
+      const resetId = window.setTimeout(() => setLoadingSeconds(0), 0);
+      return () => window.clearTimeout(resetId);
+    }
+    const started = Date.now();
+    const id = window.setInterval(() => {
+      setLoadingSeconds(Math.floor((Date.now() - started) / 1000));
+    }, 250);
+    return () => window.clearInterval(id);
+  }, [loading]);
 
   // Re-paint after result view unmounts canvases (e.g. Edit Again).
   useEffect(() => {
@@ -835,6 +872,35 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
     }
   }, []);
 
+  useEffect(() => {
+    if (!resultUrl) {
+      const resetId = window.setTimeout(() => setShareAvailable(false), 0);
+      return () => window.clearTimeout(resetId);
+    }
+    let cancelled = false;
+    (async () => {
+      try {
+        if (typeof navigator.share !== "function") {
+          if (!cancelled) setShareAvailable(false);
+          return;
+        }
+        const blob = await blobFromResult(resultUrl);
+        const mime = blob.type || "image/png";
+        const filename =
+          mime.includes("jpeg") || mime.includes("jpg")
+            ? "magicremover-result.jpg"
+            : "magicremover-result.png";
+        const file = new File([blob], filename, { type: mime });
+        if (!cancelled) setShareAvailable(canUseShare(file));
+      } catch {
+        if (!cancelled) setShareAvailable(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [resultUrl, blobFromResult, canUseShare]);
+
   const saveBlobWithAnchor = useCallback(async (blob: Blob, filename: string) => {
     const objectUrl = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -1007,7 +1073,7 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
             />
             <p className="mb-1 text-sm font-medium">Drop a photo here</p>
             <p className="text-xs text-muted-foreground">
-              or click to browse · JPG / PNG / WebP · up to ~10 MB
+              or click / paste · JPG / PNG / WebP · up to ~10 MB
             </p>
           </button>
           <input
@@ -1140,15 +1206,17 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
               )}
               {downloading ? "Preparing…" : "Download"}
             </Button>
-            <Button
-              size="lg"
-              variant="secondary"
-              className="min-h-11 min-w-[9rem]"
-              onClick={handleShare}
-              disabled={downloading}
-            >
-              Share
-            </Button>
+            {shareAvailable ? (
+              <Button
+                size="lg"
+                variant="secondary"
+                className="min-h-11 min-w-[9rem]"
+                onClick={handleShare}
+                disabled={downloading}
+              >
+                Share
+              </Button>
+            ) : null}
             <Button
               size="lg"
               variant="outline"
@@ -1259,9 +1327,12 @@ export default function ImageEditor({ initialFile }: ImageEditorProps) {
                   className="size-8 animate-spin text-primary"
                   aria-hidden="true"
                 />
-                <p className="text-sm font-medium">Removing objects…</p>
+                <p className="text-sm font-medium">
+                  Removing objects… {loadingSeconds}s
+                </p>
                 <p className="px-4 text-center text-xs text-muted-foreground">
-                  Usually 15–30s. Times out around 28s with a clear error.
+                  Usually 15–30s. Times out around{" "}
+                  {Math.round(OVERALL_BUDGET_MS / 1000)}s with a clear error.
                 </p>
               </div>
             ) : null}

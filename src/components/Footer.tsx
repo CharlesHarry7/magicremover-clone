@@ -2,16 +2,17 @@ import Link from "next/link";
 import Image from "next/image";
 
 import { Separator } from "@/components/ui/separator";
+import { hrefForDemoTab } from "@/lib/demo-tabs";
 
 const allTools = [
-  { label: "Remove People from Photo", href: "/#try" },
-  { label: "Remove Watermark from Photo", href: "/#try" },
-  { label: "Remove Object from Photo", href: "/#try" },
-  { label: "Remove Sticker from Image", href: "/#try" },
-  { label: "Remove Text from Image", href: "/#try" },
-  { label: "Remove Gemini Watermark", href: "/#try" },
-  { label: "Logo Remover", href: "/#try" },
-  { label: "Magic Eraser", href: "/#try" },
+  { label: "Remove People from Photo", href: hrefForDemoTab("People") },
+  { label: "Remove Watermark from Photo", href: hrefForDemoTab("Watermark") },
+  { label: "Remove Object from Photo", href: hrefForDemoTab("Object") },
+  { label: "Remove Sticker from Image", href: hrefForDemoTab("Sticker") },
+  { label: "Remove Text from Image", href: hrefForDemoTab("Text") },
+  { label: "Remove Gemini Watermark", href: hrefForDemoTab("Watermark") },
+  { label: "Logo Remover", href: hrefForDemoTab("Sticker") },
+  { label: "Magic Eraser", href: hrefForDemoTab("Object") },
   { label: "AI Image Generator", href: "/ai-image-generator" },
   { label: "Edit Text", href: "/edit-text-in-image" },
 ];

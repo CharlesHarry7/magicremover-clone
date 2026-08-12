@@ -1,6 +1,6 @@
 "use client";
 
-import { useId, useRef, useState } from "react";
+import { useCallback, useEffect, useId, useRef, useState } from "react";
 import Image from "next/image";
 import { UploadIcon } from "lucide-react";
 
@@ -9,12 +9,16 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { ToggleGroup, ToggleGroupItem } from "@/components/ui/toggle-group";
+import {
+  DEMO_TABS,
+  type DemoTab,
+  demoTabFromSlug,
+  syncDemoTabInUrl,
+} from "@/lib/demo-tabs";
 import { FREE_EDITS } from "@/lib/remove-limits";
 
-const tabs = ["People", "Object", "Text", "Watermark", "Sticker"] as const;
-
 const beforeAfterImages: Record<
-  (typeof tabs)[number],
+  DemoTab,
   { before: string; after: string; label: string }
 > = {
   People: {
@@ -40,15 +44,27 @@ const beforeAfterImages: Record<
   Sticker: {
     before: "/cases/logo-remover-before.webp",
     after: "/cases/logo-remover-after.webp",
-    label: "Clear stickers from the image",
+    label: "Clear logos or sticker-like overlays",
   },
 };
+
+function fileFromClipboard(data: DataTransfer | null): File | null {
+  if (!data) return null;
+  for (const item of Array.from(data.items)) {
+    if (item.kind === "file" && item.type.startsWith("image/")) {
+      return item.getAsFile();
+    }
+  }
+  const file = data.files?.[0];
+  if (file?.type.startsWith("image/")) return file;
+  return null;
+}
 
 export default function Hero() {
   const headingId = useId();
   const statusId = useId();
   const fileInputId = useId();
-  const [activeTab, setActiveTab] = useState<(typeof tabs)[number]>("People");
+  const [activeTab, setActiveTab] = useState<DemoTab>("People");
   const [mode, setMode] = useState<"demo" | "editor">("demo");
   const [initialFile, setInitialFile] = useState<File | null>(null);
   const [editorKey, setEditorKey] = useState(0);
@@ -56,20 +72,49 @@ export default function Hero() {
   const editorRegionRef = useRef<HTMLDivElement>(null);
   const images = beforeAfterImages[activeTab];
 
-  const openEditor = (file?: File | null) => {
+  const selectTab = (tab: DemoTab) => {
+    setActiveTab(tab);
+    setMode("demo");
+    syncDemoTabInUrl(tab);
+  };
+
+  const openEditor = useCallback((file?: File | null) => {
     setInitialFile(file ?? null);
     setEditorKey((k) => k + 1);
     setMode("editor");
     queueMicrotask(() => {
       editorRegionRef.current?.focus();
     });
-  };
+  }, []);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const fromQuery = demoTabFromSlug(params.get("tab"));
+    if (!fromQuery) return;
+    // Defer so the effect only schedules an update (react-hooks/set-state-in-effect).
+    queueMicrotask(() => {
+      setActiveTab(fromQuery);
+      setMode("demo");
+    });
+  }, []);
+
+  useEffect(() => {
+    const onPaste = (e: ClipboardEvent) => {
+      if (mode !== "demo") return;
+      const file = fileFromClipboard(e.clipboardData);
+      if (!file) return;
+      e.preventDefault();
+      openEditor(file);
+    };
+    window.addEventListener("paste", onPaste);
+    return () => window.removeEventListener("paste", onPaste);
+  }, [mode, openEditor]);
 
   return (
     <section
       id="try"
       aria-labelledby={headingId}
-      className="bg-gradient-to-b from-primary-light/60 to-background px-4 py-12 sm:py-20"
+      className="scroll-mt-24 bg-gradient-to-b from-primary-light/60 to-background px-4 py-12 sm:py-20"
     >
       <div className="mx-auto max-w-6xl">
         <div className="mb-6 flex flex-wrap items-center justify-center gap-2">
@@ -120,13 +165,12 @@ export default function Hero() {
             className="flex flex-wrap justify-center rounded-full bg-muted/80 p-1"
             value={mode === "demo" ? [activeTab] : []}
             onValueChange={(group) => {
-              const next = group[0] as (typeof tabs)[number] | undefined;
-              if (!next || !tabs.includes(next)) return;
-              setActiveTab(next);
-              setMode("demo");
+              const next = group[0] as DemoTab | undefined;
+              if (!next || !DEMO_TABS.includes(next)) return;
+              selectTab(next);
             }}
           >
-            {tabs.map((tab) => (
+            {DEMO_TABS.map((tab) => (
               <ToggleGroupItem
                 key={tab}
                 value={tab}
@@ -164,6 +208,8 @@ export default function Hero() {
                       alt={`Example ${activeTab.toLowerCase()} removal — before`}
                       width={600}
                       height={450}
+                      sizes="(max-width: 640px) 100vw, 400px"
+                      priority
                       className="h-full w-full object-cover"
                     />
                     <Badge className="absolute left-2 top-2 bg-black/60 text-white hover:bg-black/60">
@@ -176,6 +222,8 @@ export default function Hero() {
                       alt={`Example ${activeTab.toLowerCase()} removal — after`}
                       width={600}
                       height={450}
+                      sizes="(max-width: 640px) 100vw, 400px"
+                      priority
                       className="h-full w-full object-cover"
                     />
                     <Badge className="absolute left-2 top-2 bg-success/80 text-white hover:bg-success/80">
@@ -222,7 +270,7 @@ export default function Hero() {
                     />
                     <p className="mb-1 text-sm font-medium">Drop a photo here</p>
                     <p className="text-xs text-muted-foreground">
-                      or click to browse · JPG / PNG / WebP · up to ~10 MB
+                      or click / paste · JPG / PNG / WebP · up to ~10 MB
                     </p>
                   </button>
                   <input

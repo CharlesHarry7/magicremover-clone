@@ -9,6 +9,7 @@ import HowItWorks from "@/components/HowItWorks";
 import WhyUs from "@/components/WhyUs";
 import Limitations from "@/components/Limitations";
 import FAQ from "@/components/FAQ";
+import { hrefForDemoTab } from "@/lib/demo-tabs";
 
 export const metadata: Metadata = {
   alternates: {
@@ -28,7 +29,7 @@ const featureSections = [
       "Pedestrians and onlookers along the street",
     ],
     ctaLabel: "Try Background People Remover free",
-    ctaHref: "/#try",
+    ctaHref: hrefForDemoTab("People"),
     beforeImage: "/cases/remove-people-before01.webp",
     afterImage: "/cases/remove-people-after01.webp",
   },
@@ -43,7 +44,7 @@ const featureSections = [
       "Parked vehicles, traffic cones, and signage posts",
     ],
     ctaLabel: "Try AI Object Remover free",
-    ctaHref: "/#try",
+    ctaHref: hrefForDemoTab("Object"),
     beforeImage: "/cases/remove-object-before02.webp",
     afterImage: "/cases/remove-object-after02.webp",
   },
@@ -58,7 +59,7 @@ const featureSections = [
       "Copyright notices and attribution strips",
     ],
     ctaLabel: "Try Remove Text from Image free",
-    ctaHref: "/#try",
+    ctaHref: hrefForDemoTab("Text"),
     beforeImage: "/cases/text-remover-before.webp",
     afterImage: "/cases/text-remover-after.webp",
   },
@@ -73,7 +74,7 @@ const featureSections = [
       "Semi-transparent overlays across full images",
     ],
     ctaLabel: "Try Remove Watermark from Photo free",
-    ctaHref: "/#try",
+    ctaHref: hrefForDemoTab("Watermark"),
     beforeImage: "/cases/gemini-watermark-remover-before.webp",
     afterImage: "/cases/gemini-watermark-remover-after.webp",
   },
@@ -88,7 +89,7 @@ const featureSections = [
       "Billboards, storefronts, and packaging brand marks",
     ],
     ctaLabel: "Try Logo Remover free",
-    ctaHref: "/#try",
+    ctaHref: hrefForDemoTab("Sticker"),
     beforeImage: "/cases/logo-remover-before.webp",
     afterImage: "/cases/logo-remover-after.webp",
   },
@@ -96,14 +97,14 @@ const featureSections = [
     tag: "sticker remover",
     title: "Sticker & Emoji Remover",
     description:
-      "A sticker and emoji remover erases pasted-on graphics — Instagram stickers, Snapchat overlays, emoji reactions, chat bubbles, and censor bars — from any screenshot or photo. MagicRemover recovers the pixels underneath so the original content shows through intact. Ideal for recovering clean social media screenshots and cleaning up chat captures.",
+      "Brush over sticker-like overlays the same way you erase logos — Instagram stickers, Snapchat graphics, emoji, and censor bars. The demo gallery currently shows a logo cleanup example; upload your own screenshot for stickers and emoji.",
     bullets: [
       "Instagram, Snapchat, and TikTok stickers",
       "Emoji reactions pasted over faces",
       "Chat bubble balloons and message overlays",
     ],
     ctaLabel: "Try Sticker & Emoji Remover free",
-    ctaHref: "/#try",
+    ctaHref: hrefForDemoTab("Sticker"),
     beforeImage: "/cases/logo-remover-before.webp",
     afterImage: "/cases/logo-remover-after.webp",
   },

@@ -71,6 +71,7 @@ Worker binding typings live in slim `cloudflare-env.d.ts`. Regenerate a full dum
 | `npm run build` | Production Next.js build |
 | `npm run lint` | ESLint (flat config; `eslint-config-next@16` for flat exports while the app stays on Next 15) |
 | `npm run typecheck` | TypeScript (`tsc --noEmit`) |
+| CI | GitHub Actions runs `lint` → `typecheck` → `build` on push/PR |
 | `npm run preview` | OpenNext Cloudflare build + local Workers preview |
 | `npm run deploy` | OpenNext Cloudflare build + `wrangler` deploy |
 | `npm run upload` | OpenNext build + upload (no promote) |

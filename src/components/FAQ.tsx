@@ -6,6 +6,7 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { FREE_EDITS } from "@/lib/remove-limits";
 
 const faqs = [
   {
@@ -14,29 +15,26 @@ const faqs = [
       "MagicRemover is a free AI-powered tool that removes unwanted objects, people, text, watermarks, stickers, and logos from photos — brush a mask, run remove, then download.",
   },
   {
-    question: "Is this clone really free?",
-    answer:
-      "Yes. There is no Stripe and no paywall in this clone. The editor offers two demo edits per browser session (refresh resets the counter). No account is required.",
+    question: "Is it really free?",
+    answer: `Yes. There is no Stripe and no paywall here. The editor offers ${FREE_EDITS} demo edits per browser session (refresh resets the counter). No account is required.`,
   },
   {
     question: "How many photos can I edit?",
-    answer:
-      "This clone tracks two demo edits in memory for the current page session. It does not implement sign-in bonuses or a persistent daily quota.",
+    answer: `This build tracks ${FREE_EDITS} demo edits in memory for the current page session. It does not implement sign-in bonuses or a persistent daily quota.`,
   },
   {
     question: "Do I need an account?",
-    answer:
-      "No. Open the page and start editing. There is no login flow in this clone.",
+    answer: "No. Open the page and start editing — there is no login flow.",
   },
   {
     question: "How does the AI object remover work?",
     answer:
-      "You brush over the area to erase. The app sends the image and a binary mask to /api/remove-object, which calls a Replicate inpainting model when configured. The Worker aims to finish within ~30s and returns a clear timeout error if it cannot.",
+      "You brush over the area to erase. The app sends the image and a binary mask to /api/remove-object, which runs an inpainting model when the server is configured. The Worker aims to finish within ~30s and returns a clear timeout error if it cannot.",
   },
   {
     question: "What if removal is not configured?",
     answer:
-      "If the server has no removal token configured, the API returns HTTP 503 with code MISSING_API_KEY instead of a fake success image.",
+      "If the server is missing its removal credentials, the API returns HTTP 503 with code MISSING_API_KEY instead of a fake success image.",
   },
   {
     question: "Can I remove people, watermarks, and text?",
@@ -46,7 +44,7 @@ const faqs = [
   {
     question: "What image formats are supported?",
     answer:
-      "JPG, PNG, and WebP, up to about 10 MB. Oversized payloads get HTTP 413 from the API.",
+      "JPG, PNG, and WebP, up to about 10 MB. Oversized payloads get HTTP 413 from the API. You can also paste an image from the clipboard.",
   },
   {
     question: "Are my uploaded photos stored?",
@@ -61,7 +59,7 @@ export default function FAQ() {
       <div className="mx-auto max-w-3xl">
         <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">FAQ</h2>
         <h3 className="mb-10 text-center text-lg text-muted-foreground">
-          Honest answers for this clone.
+          Straight answers about this free remover.
         </h3>
 
         <Accordion className="rounded-xl border border-border px-4">

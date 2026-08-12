@@ -51,8 +51,8 @@ export const metadata: Metadata = {
     images: [
       {
         url: "/cases/remove-people-after01.webp",
-        width: 1200,
-        height: 900,
+        width: 1184,
+        height: 896,
         alt: "MagicRemover before/after object removal example",
       },
     ],
