@@ -169,8 +169,7 @@ export default function Hero() {
 
         <p className="mx-auto mb-6 max-w-2xl text-center text-base leading-relaxed text-muted-foreground">
           Brush any object, person, text, or watermark out of a photo — no
-          signup and no watermark on the result. This page is a free demo:{" "}
-          {FREE_EDITS_STORY}.
+          signup and no watermark on the result.
         </p>
 
         <div className="mb-5 flex w-full max-w-full items-center gap-2 sm:justify-center">

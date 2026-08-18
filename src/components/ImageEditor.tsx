@@ -1107,7 +1107,7 @@ export default function ImageEditor({
           const n = (index + 1) as 1 | 2 | 3 | 4;
           const active = loopStep === n;
           const done = loopStep > n;
-          const short = label === "Download" ? "Save" : label;
+          const short = label;
           return (
             <li
               key={label}
@@ -1255,7 +1255,7 @@ export default function ImageEditor({
 
           <div
             ref={actionsRef}
-            className="sticky bottom-3 z-10 flex flex-wrap justify-center gap-3 rounded-xl border border-border/60 bg-background/95 p-3 shadow-sm backdrop-blur supports-backdrop-filter:bg-background/85"
+            className="sticky bottom-3 z-10 flex flex-wrap justify-center gap-2 rounded-xl border border-border/60 bg-background/95 p-3 shadow-sm backdrop-blur supports-backdrop-filter:bg-background/85 sm:gap-3"
           >
             <Button
               size="lg"
@@ -1282,7 +1282,7 @@ export default function ImageEditor({
               </Button>
             ) : null}
             <Button
-              size="lg"
+              size="default"
               variant="outline"
               className="min-h-11"
               onClick={handleOpenResult}
@@ -1291,7 +1291,7 @@ export default function ImageEditor({
               Open
             </Button>
             <Button
-              size="lg"
+              size="default"
               variant="outline"
               className="min-h-11"
               onClick={() => {
@@ -1305,7 +1305,7 @@ export default function ImageEditor({
               Edit Again
             </Button>
             <Button
-              size="lg"
+              size="default"
               variant="outline"
               className="min-h-11"
               onClick={handleNewImage}
@@ -1314,14 +1314,6 @@ export default function ImageEditor({
               New Image
             </Button>
           </div>
-          {!downloadNote ? (
-            <Alert className="mt-3">
-              <DownloadIcon />
-              <AlertDescription>
-                Removal finished — compare the result, then download.
-              </AlertDescription>
-            </Alert>
-          ) : null}
           {downloadNote ? (
             <Alert className="mt-3">
               <DownloadIcon />
