@@ -1,4 +1,16 @@
 # https://developers.cloudflare.com/workers/static-assets/headers
 # https://opennext.js.org/cloudflare/caching#static-assets-caching
+
+/*
+  X-Content-Type-Options: nosniff
+  Referrer-Policy: strict-origin-when-cross-origin
+  Permissions-Policy: camera=(), microphone=(), geolocation=()
+
 /_next/static/*
   Cache-Control: public,max-age=31536000,immutable
+
+/cases/*
+  Cache-Control: public,max-age=604800,stale-while-revalidate=86400
+
+/logo.webp
+  Cache-Control: public,max-age=604800,stale-while-revalidate=86400

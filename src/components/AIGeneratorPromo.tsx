@@ -1,25 +1,35 @@
 import Link from "next/link";
-import { Button } from "@/components/ui/button";
+
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 export default function AIGeneratorPromo() {
   return (
-    <section className="px-4 py-12">
-      <div className="mx-auto max-w-4xl rounded-2xl border-2 border-primary/20 bg-gradient-to-br from-primary-light to-white p-8 sm:p-12">
-        <div className="flex items-center gap-2 mb-4">
-          <Badge>New</Badge>
-        </div>
-        <h3 className="mb-3 text-xl font-bold sm:text-2xl">
-          Need a picture you don&apos;t have? Generate one.
-        </h3>
-        <p className="mb-6 max-w-xl text-sm leading-relaxed text-muted-foreground">
-          Describe a scene and get an original image — no watermark and no stock licence to worry about. 3 credits an image, or attach reference photos to steer the style.
+    <section className="border-y border-border/70 bg-secondary/40 px-4 py-12 sm:py-14">
+      <div className="mx-auto max-w-3xl text-center">
+        <Badge variant="secondary" className="mb-3">
+          Coming soon
+        </Badge>
+        <h2 className="text-2xl font-bold tracking-tight text-foreground sm:text-3xl">
+          AI Image Generator
+        </h2>
+        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-muted-foreground sm:text-base">
+          Text-to-image is not live in this clone. Object removal is the working
+          product path.
         </p>
-        <Link href="/ai-image-generator">
-          <Button>
-            Try the AI image generator →
+        <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <Button size="sm" nativeButton={false} render={<Link href="/#try" />}>
+            Use object remover
           </Button>
-        </Link>
+          <Button
+            size="sm"
+            variant="outline"
+            nativeButton={false}
+            render={<Link href="/ai-image-generator" />}
+          >
+            Roadmap note
+          </Button>
+        </div>
       </div>
     </section>
   );

@@ -6,65 +6,90 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from "@/components/ui/accordion";
+import { FREE_EDITS_STORY } from "@/lib/remove-limits";
+import { SERVICE_UNAVAILABLE_ZH } from "@/lib/remove-errors";
 
 const faqs = [
   {
     question: "What is MagicRemover?",
-    answer: "MagicRemover is a free AI-powered tool that removes unwanted objects, people, text, watermarks, stickers, and logos from photos in seconds — no signup required.",
+    answer:
+      "MagicRemover is a free AI-powered tool that removes unwanted objects, people, text, watermarks, stickers, and logos from photos — brush a mask, run remove, then download.",
   },
   {
-    question: "Is MagicRemover really free?",
-    answer: "Yes! MagicRemover is 100% free. You get 5 edits every day, forever. No credit card, no trial, no paywall. 2 free edits without signing in, plus 2 more when you sign in.",
+    question: "Is it really free?",
+    answer: `Yes — this is a free session demo with no paywall. ${FREE_EDITS_STORY}. It is not an unlimited forever-free quota. No account is required.`,
   },
   {
-    question: "How many photos can I edit each day?",
-    answer: "You get 2 free edits per day without signing in. Sign in for 2 additional edits, bringing your total to 4 free edits daily.",
+    question: "How many photos can I edit?",
+    answer: `${FREE_EDITS_STORY}. This build does not add extra edits when signed in, and there is no daily quota beyond that session counter.`,
   },
   {
     question: "Do I need an account?",
-    answer: "No account is required to use MagicRemover. Simply open the page and start editing. Your browser tracks your daily usage count.",
+    answer: "No. Open the page and start editing — there is no login flow.",
   },
   {
     question: "How does the AI object remover work?",
-    answer: "MagicRemover uses state-of-the-art AI inpainting models. You brush over the area you want to remove, and the AI predicts what should be behind it, reconstructing a realistic background.",
+    answer:
+      "You brush over the area to erase. The app sends the image and a binary mask to /api/remove-object, which runs an inpainting model when the server is configured. The Worker aims to finish within ~30s and returns a clear timeout error if it cannot.",
   },
   {
-    question: "Can I remove people from photos?",
-    answer: "Yes! The Background People Remover can clear passers-by, tourists, and crowds from your photos while keeping your main subject intact.",
+    question: "What if removal is not configured?",
+    answer:
+      `You’ll see a notice: ${SERVICE_UNAVAILABLE_ZH}. You can still upload a photo and try again later — we never show a fake success image.`,
   },
   {
-    question: "Can I remove watermarks and text?",
-    answer: "Yes, MagicRemover can remove watermarks, date stamps, captions, subtitles, and other text overlays. However, please only remove watermarks from images you have the right to edit.",
+    question: "Can I remove people, watermarks, and text?",
+    answer:
+      "Yes — brush the unwanted pixels. Only remove watermarks or logos from images you have the right to edit.",
   },
   {
     question: "What image formats are supported?",
-    answer: "MagicRemover supports JPG and PNG image formats, with files up to approximately 10 MB in size.",
+    answer:
+      "JPG, PNG, and WebP, up to about 10 MB. Oversized payloads get HTTP 413 from the API. You can also paste an image from the clipboard.",
   },
   {
     question: "Are my uploaded photos stored?",
-    answer: "No. We don't store your uploads or results. Images are processed in memory and cleared after each request. Your privacy is our priority.",
+    answer:
+      "No archive. Images are processed for the request and are not kept by this app afterward.",
   },
 ];
+
+const faqJsonLd = {
+  "@context": "https://schema.org",
+  "@type": "FAQPage",
+  mainEntity: faqs.map((faq) => ({
+    "@type": "Question",
+    name: faq.question,
+    acceptedAnswer: {
+      "@type": "Answer",
+      text: faq.answer,
+    },
+  })),
+};
 
 export default function FAQ() {
   return (
     <section className="px-4 py-16">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }}
+      />
       <div className="mx-auto max-w-3xl">
-        <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">
-          FAQ
-        </h2>
-        <h3 className="mb-10 text-center text-lg text-muted-foreground">
-          The stuff people ask.
-        </h3>
+        <h2 className="mb-2 text-center text-2xl font-bold sm:text-3xl">FAQ</h2>
+        <p className="mb-10 text-center text-lg text-muted-foreground">
+          Straight answers about this free remover.
+        </p>
 
-        <Accordion className="space-y-2">
+        <Accordion className="rounded-xl border border-border px-4">
           {faqs.map((faq, index) => (
-            <AccordionItem key={index} value={`item-${index}`} className="rounded-xl border border-border px-5">
+            <AccordionItem key={faq.question} value={`item-${index}`}>
               <AccordionTrigger className="py-4 hover:no-underline">
                 {faq.question}
               </AccordionTrigger>
               <AccordionContent>
-                <p className="text-sm leading-relaxed text-muted-foreground">{faq.answer}</p>
+                <p className="leading-relaxed text-muted-foreground">
+                  {faq.answer}
+                </p>
               </AccordionContent>
             </AccordionItem>
           ))}

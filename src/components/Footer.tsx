@@ -1,44 +1,26 @@
 import Link from "next/link";
-import Image from "next/image";
 
-const allTools = [
-  { label: "Remove People from Photo", href: "#try" },
-  { label: "Remove Watermark from Photo", href: "#try" },
-  { label: "Remove Object from Photo", href: "#try" },
-  { label: "Remove Sticker from Image", href: "#try" },
-  { label: "Remove Text from Image", href: "#try" },
-  { label: "Remove Gemini Watermark", href: "#try" },
-  { label: "Logo Remover", href: "#try" },
-  { label: "Magic Eraser", href: "#try" },
-  { label: "AI Image Generator", href: "#try" },
-  { label: "Edit Text", href: "#try" },
-];
-
-const guides = [
-  { label: "Blog", href: "/blog" },
-  { label: "How to Remove People from a Photo", href: "/blog/how-to-remove-people-from-a-photo" },
-];
-
-const company = [
-  { label: "About", href: "/about" },
-  { label: "Contact", href: "/contact" },
-  { label: "Privacy Policy", href: "/privacy" },
-  { label: "Terms of Service", href: "/terms" },
-];
+import BrandLogo from "@/components/BrandLogo";
+import HashNavLink from "@/components/HashNavLink";
+import { Separator } from "@/components/ui/separator";
+import {
+  FOOTER_COMPANY,
+  FOOTER_GUIDES,
+  FOOTER_TOOLS,
+} from "@/lib/site-links";
+import { FREE_EDITS_STORY } from "@/lib/remove-limits";
 
 export default function Footer() {
   return (
-    <footer className="border-t border-border bg-muted">
+    <footer className="border-t border-border bg-card">
       <div className="mx-auto max-w-6xl px-4 py-12">
         <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
           <div>
             <h4 className="mb-3 text-sm font-semibold">All tools</h4>
             <ul className="space-y-1.5">
-              {allTools.map((link) => (
+              {FOOTER_TOOLS.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    {link.label}
-                  </Link>
+                  <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>
               ))}
             </ul>
@@ -47,11 +29,9 @@ export default function Footer() {
           <div>
             <h4 className="mb-3 text-sm font-semibold">Guides</h4>
             <ul className="space-y-1.5">
-              {guides.map((link) => (
+              {FOOTER_GUIDES.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    {link.label}
-                  </Link>
+                  <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>
               ))}
             </ul>
@@ -60,39 +40,49 @@ export default function Footer() {
           <div>
             <h4 className="mb-3 text-sm font-semibold">Company</h4>
             <ul className="space-y-1.5">
-              {company.map((link) => (
+              {FOOTER_COMPANY.map((link) => (
                 <li key={link.label}>
-                  <Link href={link.href} className="text-sm text-muted-foreground hover:text-foreground transition-colors">
-                    {link.label}
-                  </Link>
+                  <HashNavLink href={link.href}>{link.label}</HashNavLink>
                 </li>
               ))}
             </ul>
           </div>
 
           <div>
-            <Link href="/" className="flex items-center gap-2 mb-3">
-              <Image src="/logo.webp" alt="MagicRemover" width={28} height={28} className="h-7 w-7" />
+            <Link href="/" className="mb-3 flex items-center gap-2">
+              <BrandLogo size={28} className="h-7 w-7" />
               <span className="font-bold">MagicRemover</span>
             </Link>
-            <p className="text-xs text-muted-foreground mb-3">
+            <p className="mb-3 text-xs text-muted-foreground">
               Powered by{" "}
-              <Link href="https://apimodels.app" className="text-primary hover:underline" target="_blank">
+              <Link
+                href="https://apimodels.app"
+                className="text-primary hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
                 apimodels.app
               </Link>{" "}
               — a unified AI image generation API
             </p>
             <p className="text-xs text-muted-foreground">
               Also from us: CoverHook —{" "}
-              <Link href="https://coverhook.com" className="text-primary hover:underline" target="_blank">
+              <Link
+                href="https://coverhook.com"
+                className="text-primary hover:underline"
+                target="_blank"
+                rel="noreferrer"
+              >
                 AI social media cover generator
               </Link>
             </p>
           </div>
         </div>
 
-        <div className="mt-10 border-t border-border pt-6 text-center text-xs text-muted-foreground">
-          2 free removes a day, plus 2 more when you sign in · Results retained 24 hours · We don&apos;t store your originals.
+        <Separator className="mt-10" />
+        <div className="pt-6 text-center text-xs text-muted-foreground">
+          {FREE_EDITS_STORY} · No signup · Results are not stored · Stub
+          marketing pages link back to the editor.
         </div>
       </div>
     </footer>

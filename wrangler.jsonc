@@ -1,5 +1,27 @@
 {
 	"$schema": "node_modules/wrangler/config-schema.json",
+	// =============================================================================
+	// OpenNext on Cloudflare Workers — Worker SSR + Workers Static Assets (ASSETS)
+	// =============================================================================
+	// Live pages.dev HTML/SSR with ALL `/_next/static/*` 404 is NOT assetPrefix/basePath.
+	// It means the edge is serving OpenNext/Worker HTML without uploading `.open-next/assets`.
+	//
+	// REQUIRED deploy (single operation uploads Worker + assets.directory):
+	//   npm run deploy          # promote
+	//   npm run upload          # non-prod version (preferred for PR QA)
+	//   npm run deploy:preview  # upload --preview-alias preview
+	//   = opennextjs-cloudflare build && check:assets && opennextjs-cloudflare …
+	//
+	// DO NOT:
+	//   - set next.config assetPrefix / basePath to “fix” static 404s
+	//   - use Cloudflare Pages git / `pages deploy` / bare `next build` alone
+	//   - publish Worker without assets (or assets without Worker) for the full app
+	//   - set assets.run_worker_first: true globally (CSS/JS must hit ASSETS first)
+	//
+	// If magicremover-clone.pages.dev still shows HTML 200 + static 404, unbind/delete
+	// the legacy Pages project, then redeploy this Worker so the hostname points here.
+	// Prefer workers.dev for QA until pages.dev is unbound + redeployed.
+	// =============================================================================
 	"main": ".open-next/worker.js",
 	"name": "magicremover-clone",
 	"compatibility_date": "2026-08-12",
@@ -7,12 +29,21 @@
 		"nodejs_compat",
 		"global_fetch_strictly_public"
 	],
+	// Serve workers.dev in addition to any pages.dev alias bound in the dashboard.
+	"workers_dev": true,
+	"preview_urls": true,
 	"assets": {
+		// Built by `opennextjs-cloudflare build` — includes /_next/static/** and public/**
 		"directory": ".open-next/assets",
-		"binding": "ASSETS"
+		// OpenNext Worker reads env.ASSETS — binding name is required.
+		"binding": "ASSETS",
+		// Explicit: platform serves matching ASSETS (CSS/JS/media/cases) before the Worker.
+		// Default is false; keep it false so /_next/static/* never depends on SSR routing.
+		"run_worker_first": false
 	},
 	"services": [
 		{
+			// Required by OpenNext revalidation/queue wiring; must match "name" above.
 			"binding": "WORKER_SELF_REFERENCE",
 			"service": "magicremover-clone"
 		}

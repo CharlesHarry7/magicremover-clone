@@ -2,80 +2,125 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import Image from "next/image";
-import { Button } from "@/components/ui/button";
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from "@/components/ui/sheet";
 import { MenuIcon } from "lucide-react";
 
-const navLinks = [
-  { href: "/ai-image-generator", label: "AI Image Generator" },
-  { href: "/edit-text-in-image", label: "Edit Text" },
-  { href: "#", label: "Image Tools" },
-  { href: "#", label: "Video Tools" },
-];
+import BrandLogo from "@/components/BrandLogo";
+import { Button } from "@/components/ui/button";
+import { Separator } from "@/components/ui/separator";
+import {
+  Sheet,
+  SheetContent,
+  SheetDescription,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
+import { handleSamePageHashNav } from "@/lib/scroll-to-id";
+import { NAV_LINKS } from "@/lib/site-links";
 
 export default function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
 
+  const onHashLinkClick = (
+    href: string,
+    event: React.MouseEvent<HTMLElement>
+  ) => {
+    const handled = handleSamePageHashNav(href, event);
+    if (handled) setMobileOpen(false);
+  };
+
   return (
-    <nav className="sticky top-0 z-50 border-b border-border bg-white/90 backdrop-blur-md">
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+    <header className="sticky top-0 z-50 border-b border-border bg-background/90 backdrop-blur-md">
+      <nav className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-2">
-          <Image src="/logo.webp" alt="MagicRemover" width={32} height={32} className="h-8 w-8" />
+          <BrandLogo size={32} className="h-8 w-8" priority />
           <span className="text-lg font-bold">MagicRemover</span>
         </Link>
 
-        <div className="hidden items-center gap-6 text-sm font-medium lg:flex">
-          {navLinks.map((link) => (
-            <Link
+        <div className="hidden items-center gap-1 lg:flex">
+          {NAV_LINKS.map((link) => (
+            <Button
               key={link.label}
-              href={link.href}
-              className="text-muted-foreground transition-colors hover:text-foreground"
+              variant="ghost"
+              size="sm"
+              nativeButton={false}
+              render={<Link href={link.href} />}
+              className="text-muted-foreground"
+              onClick={(e) => onHashLinkClick(link.href, e)}
             >
               {link.label}
-            </Link>
+            </Button>
           ))}
         </div>
 
-        <div className="hidden items-center gap-3 lg:flex">
-          <Button variant="outline" size="sm">
-            English
+        <div className="hidden items-center gap-2 lg:flex">
+          <Button
+            size="sm"
+            nativeButton={false}
+            render={<Link href="/#try" />}
+            onClick={(e) => onHashLinkClick("/#try", e)}
+          >
+            Try free
           </Button>
         </div>
 
         <Sheet open={mobileOpen} onOpenChange={setMobileOpen}>
           <SheetTrigger
             render={
-              <button
-                className="lg:hidden inline-flex items-center justify-center rounded-lg p-2 text-muted-foreground hover:bg-muted transition-colors"
-                aria-label="Toggle menu"
-              >
-                <MenuIcon className="h-5 w-5" />
-              </button>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="lg:hidden"
+                aria-label="Open menu"
+              />
             }
-          />
-          <SheetContent side="right" className="w-64">
+          >
+            <MenuIcon />
+          </SheetTrigger>
+          <SheetContent side="right" className="w-[min(100%,20rem)]">
             <SheetHeader>
-              <SheetTitle>Menu</SheetTitle>
+              <SheetTitle className="flex items-center gap-2">
+                <BrandLogo size={24} className="h-6 w-6" decorative />
+                MagicRemover
+              </SheetTitle>
+              <SheetDescription className="sr-only">
+                Site navigation
+              </SheetDescription>
             </SheetHeader>
-            <div className="flex flex-col gap-3 mt-4">
-              {navLinks.map((link) => (
-                <Link
+            <Separator />
+            <div className="flex flex-col gap-1 px-2">
+              {NAV_LINKS.map((link) => (
+                <Button
                   key={link.label}
-                  href={link.href}
-                  className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-                  onClick={() => setMobileOpen(false)}
+                  variant="ghost"
+                  className="justify-start text-muted-foreground"
+                  nativeButton={false}
+                  render={<Link href={link.href} />}
+                  onClick={(e) => {
+                    onHashLinkClick(link.href, e);
+                    setMobileOpen(false);
+                  }}
                 >
                   {link.label}
-                </Link>
+                </Button>
               ))}
-              <Button variant="outline" size="sm" className="w-fit">
-                English
+            </div>
+            <Separator />
+            <div className="flex flex-col gap-2 px-4 pb-4">
+              <Button
+                nativeButton={false}
+                render={<Link href="/#try" />}
+                onClick={(e) => {
+                  onHashLinkClick("/#try", e);
+                  setMobileOpen(false);
+                }}
+              >
+                Try free
               </Button>
             </div>
           </SheetContent>
         </Sheet>
-      </div>
-    </nav>
+      </nav>
+    </header>
   );
 }
