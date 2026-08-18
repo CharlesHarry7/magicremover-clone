@@ -14,13 +14,16 @@ import { MAX_IMAGE_DIM, MAX_UPLOAD_BYTES, remainingEditsLabel } from "./remove-l
 import {
   createOncePerTurnDeliver,
   editorLoopStep,
+  fileFromDataTransfer,
   fileFromInputElement,
   fitCanvasSize,
   imageFileRejectReason,
   isAllowedImageFile,
+  acceptImageFile,
   pickFirstFile,
   takeAcceptedInputFile,
 } from "./image-file.ts";
+import { prepareEditorImage } from "./prepare-editor-image.ts";
 
 function makeFile(
   name: string,
@@ -189,6 +192,81 @@ test("pickFirstFile reads index 0", () => {
   const file = makeFile("ok.jpg", "image/jpeg");
   assert.equal(pickFirstFile({ 0: file, length: 1 } as unknown as FileList), file);
   assert.equal(pickFirstFile(undefined), null);
+});
+
+test("fileFromDataTransfer prefers items then files (drop path)", () => {
+  const fromItems = makeFile("from-items.png", "image/png");
+  const fromFiles = makeFile("from-files.jpg", "image/jpeg");
+  const withItems = {
+    items: [
+      { kind: "string", getAsFile: () => null },
+      { kind: "file", getAsFile: () => fromItems },
+    ],
+    files: { 0: fromFiles, length: 1 },
+  };
+  assert.equal(
+    fileFromDataTransfer(withItems as unknown as DataTransfer),
+    fromItems
+  );
+
+  const filesOnly = {
+    items: [],
+    files: { 0: fromFiles, length: 1 },
+  };
+  assert.equal(
+    fileFromDataTransfer(filesOnly as unknown as DataTransfer),
+    fromFiles
+  );
+  assert.equal(fileFromDataTransfer(null), null);
+  assert.equal(
+    fileFromDataTransfer({ items: [], files: { length: 0 } } as unknown as DataTransfer),
+    null
+  );
+});
+
+test("acceptImageFile maps reject reasons for drop/pick callers", () => {
+  assert.equal(acceptImageFile(null), null);
+  assert.deepEqual(acceptImageFile(makeFile("x.gif", "image/gif")), {
+    ok: false,
+    error: "Please upload a JPG, PNG, or WebP image.",
+  });
+  const empty = makeFile("x.jpg", "image/jpeg", 0);
+  assert.deepEqual(acceptImageFile(empty), {
+    ok: false,
+    error: "That file looks empty. Try another image.",
+  });
+  const ok = makeFile("ok.webp", "image/webp");
+  assert.deepEqual(acceptImageFile(ok), { ok: true, file: ok });
+});
+
+test("prepareEditorImage rejects bad files before needing a document", async () => {
+  await assert.rejects(
+    () => prepareEditorImage(makeFile("x.gif", "image/gif")),
+    (err: unknown) => {
+      assert.ok(err instanceof Error);
+      assert.equal(err.message, "Please upload a JPG, PNG, or WebP image.");
+      return true;
+    }
+  );
+  await assert.rejects(
+    () => prepareEditorImage(makeFile("empty.jpg", "image/jpeg", 0)),
+    (err: unknown) => {
+      assert.ok(err instanceof Error);
+      assert.equal(err.message, "That file looks empty. Try another image.");
+      return true;
+    }
+  );
+  const big = new File([new Uint8Array(MAX_UPLOAD_BYTES + 1)], "big.jpg", {
+    type: "image/jpeg",
+  });
+  await assert.rejects(
+    () => prepareEditorImage(big),
+    (err: unknown) => {
+      assert.ok(err instanceof Error);
+      assert.equal(err.message, "File size must be under 10 MB.");
+      return true;
+    }
+  );
 });
 
 test("remainingEditsLabel EN/ZH quota badge copy", () => {

@@ -126,16 +126,18 @@ async function decodeAndRasterize(file: File): Promise<PreparedEditorImage> {
 /**
  * Decode a user file to a drawable source + non-zero canvas size.
  * Throws an Error with a toast-ready message; never returns a 0×0 canvas.
+ * Reject reasons run before the document check so pick/drop validation is
+ * consistent in tests and never depends on a browser canvas existing first.
  */
 export async function prepareEditorImage(
   file: File
 ): Promise<PreparedEditorImage> {
+  const reason = imageFileRejectReason(file);
+  if (reason) throw new Error(reason);
+
   if (typeof document === "undefined") {
     throw new Error(PREPARE_ERROR);
   }
-
-  const reason = imageFileRejectReason(file);
-  if (reason) throw new Error(reason);
 
   const work = decodeAndRasterize(file);
   let timer: ReturnType<typeof setTimeout> | undefined;
