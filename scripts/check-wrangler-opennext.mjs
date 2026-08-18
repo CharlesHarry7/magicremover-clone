@@ -6,6 +6,7 @@
  * - next.config sets assetPrefix / basePath (wrong fix for /_next/static 404)
  * - wrangler.jsonc is missing main / assets.directory / ASSETS binding
  * - wrangler.jsonc looks like a Pages-only config (pages_build_output_dir)
+ * - assets.not_found_handling is not "none" (SPA / 404.html would be HTML for missing JS)
  *
  * Usage: node scripts/check-wrangler-opennext.mjs
  */
@@ -81,9 +82,9 @@ if (assets.run_worker_first === true) {
     "assets.run_worker_first must not be true globally — static CSS/JS would hit the Worker first and commonly 404. Keep default false (ASSETS first)."
   );
 }
-if (assets.not_found_handling && assets.not_found_handling !== "none") {
+if (assets.not_found_handling !== "none") {
   fail(
-    `assets.not_found_handling must be "none" (or omitted). "${assets.not_found_handling}" would serve HTML (SPA or 404.html) for missing /_next/static/* instead of the Worker hard-404.`
+    `assets.not_found_handling must be "none" (got ${JSON.stringify(assets.not_found_handling)}). SPA / 404-page / omit would allow HTML for missing /_next/static/* instead of the Worker hard-404.`
   );
 }
 

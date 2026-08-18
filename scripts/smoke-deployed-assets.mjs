@@ -107,10 +107,16 @@ const missingRes = await fetch(baseUrl + missingPath, {
   redirect: "follow",
 });
 const missingCt = (missingRes.headers.get("content-type") || "").toLowerCase();
-const missingMark =
-  missingRes.status === 404 && !missingCt.includes("text/html") ? "OK" : "FAIL";
+const missingOpenNext = missingRes.headers.get("x-opennext");
+const missingBody = await missingRes.text();
+const missingLooksHtml = /<!doctype html|<html[\s>]/i.test(missingBody);
+const missingOk =
+  missingRes.status === 404 &&
+  !missingCt.includes("text/html") &&
+  !missingOpenNext &&
+  !missingLooksHtml;
 console.log(
-  `${missingMark} ${missingRes.status} ${missingCt || "<?>"}\t${missingPath} (known-missing)`
+  `${missingOk ? "OK" : "FAIL"} ${missingRes.status} ${missingCt || "<?>"}\t${missingPath} (known-missing)`
 );
 if (missingRes.status !== 404) {
   console.error(
@@ -118,9 +124,9 @@ if (missingRes.status !== 404) {
   );
   process.exit(1);
 }
-if (missingCt.includes("text/html")) {
+if (missingCt.includes("text/html") || missingLooksHtml || missingOpenNext) {
   console.error(
-    `smoke-deployed-assets: known-missing ${missingPath} returned content-type ${missingCt}. ASSETS miss must hard-404 as non-HTML (not a Next/OpenNext HTML shell).`
+    `smoke-deployed-assets: known-missing ${missingPath} looks like a Next/OpenNext HTML shell (content-type=${missingCt || "<?>"}, x-opennext=${missingOpenNext || "absent"}). ASSETS miss must hard-404 as non-HTML.`
   );
   process.exit(1);
 }
