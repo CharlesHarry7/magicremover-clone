@@ -16,11 +16,12 @@
 
 ```bash
 npm ci
+cp .dev.vars.example .env.local
 cp .dev.vars.example .dev.vars
 npm run dev
 ```
 
-在 `.dev.vars` 中填写 `REPLICATE_API_TOKEN`，打开 [localhost:3000](http://localhost:3000)。开发配置通过 OpenNext 初始化 Cloudflare 环境。
+在 `.env.local` 和 `.dev.vars` 中填写 `REPLICATE_API_TOKEN`，打开 [localhost:3000](http://localhost:3000)。Next.js 开发服务使用 `.env.local`；OpenNext／Workers 本地预览使用 `.dev.vars`。开发配置通过 OpenNext 初始化 Cloudflare 环境。
 
 ## 环境变量
 
@@ -28,7 +29,7 @@ npm run dev
 | --- | --- |
 | `REPLICATE_API_TOKEN` | 真实物体移除所需的 Replicate API 令牌；缺失时 `/api/remove-object` 返回 HTTP 503 |
 
-本地开发／预览使用 `.dev.vars`。生产环境通过 Workers Secret 配置：
+本地 Next.js 开发使用 `.env.local`，Workers 预览使用 `.dev.vars`。生产环境通过 Workers Secret 配置：
 
 ```bash
 npx wrangler secret put REPLICATE_API_TOKEN
